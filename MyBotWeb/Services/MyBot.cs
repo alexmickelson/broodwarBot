@@ -22,7 +22,10 @@ public class MyBot
 
         _game.DrawTextScreen(100, 100, "Bot running via Blazor!");
 
-        // Add your bot logic here
+        if (_game.GetFrameCount() % 10 == 0)
+        {
+            System.Console.WriteLine("Frame: " + _game.GetFrameCount());
+        }
     }
 
     public void OnUnitComplete(Unit unit)

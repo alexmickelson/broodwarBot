@@ -1,0 +1,195 @@
+@using BWAPI.NET
+@using MyBotWeb.Services
+@inject BotService BotService
+@implements IDisposable
+
+<div class="game-status-section bg-dark border border-secondary rounded p-3 mb-3">
+    <h2 class="text-light">Game Status</h2>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="card bg-secondary text-light">
+                <div class="card-body">
+                    <strong>Connection:</strong> 
+                    <span class="@(BotService.IsConnected ? "text-success" : "text-danger") fw-bold">
+                        @(BotService.IsConnected ? "Connected" : "Disconnected")
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-light">
+                <div class="card-body">
+                    <strong>In Game:</strong> 
+                    <span class="@(BotService.IsInGame ? "text-success" : "text-muted") fw-bold">
+                        @(BotService.IsInGame ? "Yes" : "No")
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-light">
+                <div class="card-body">
+                    <strong>Status:</strong> @BotService.GameStatus
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-light">
+                <div class="card-body">
+                    <strong>Frame:</strong> @GetFrameCount()
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="resources-section bg-dark border border-secondary rounded p-3 mb-3">
+    <h2 class="text-light">Resources</h2>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card bg-secondary text-light">
+                <div class="card-body">
+                    <strong>Minerals:</strong> @GetMinerals()
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-secondary text-light">
+                <div class="card-body">
+                    <strong>Gas:</strong> @GetGas()
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-secondary text-light">
+                <div class="card-body">
+                    <strong>Supply:</strong> @GetSupplyUsed() / @GetSupplyTotal()
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="units-section bg-dark border border-secondary rounded p-3 mb-3">
+    <h2 class="text-light">Units (@GetUnits().Count())</h2>
+    @if (GetUnits().Any())
+    {
+        <table class="table table-dark table-striped table-hover">
+            <thead class="table-primary">
+                <tr>
+                    <th>Type</th>
+                    <th>Health</th>
+                    <th>Completed</th>
+                    <th>Position</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var unit in GetUnits())
+                {
+                    <tr>
+                        <td>@unit.GetUnitType().ToString()</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: @((unit.GetHitPoints() * 100.0 / unit.GetUnitType().MaxHitPoints()))%"
+                                     aria-valuenow="@unit.GetHitPoints()" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="@unit.GetUnitType().MaxHitPoints()">
+                                    @unit.GetHitPoints() / @unit.GetUnitType().MaxHitPoints()
+                                </div>
+                            </div>
+                        </td>
+                        <td>@(unit.IsCompleted() ? "✓" : "Building...")</td>
+                        <td>(@unit.GetPosition().X, @unit.GetPosition().Y)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="text-muted fst-italic">No units available</p>
+    }
+</div>
+
+<div class="buildings-section bg-dark border border-secondary rounded p-3 mb-3">
+    <h2 class="text-light">Buildings (@GetBuildings().Count())</h2>
+    @if (GetBuildings().Any())
+    {
+        <table class="table table-dark table-striped table-hover">
+            <thead class="table-primary">
+                <tr>
+                    <th>Type</th>
+                    <th>Health</th>
+                    <th>Completed</th>
+                    <th>Position</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var building in GetBuildings())
+                {
+                    <tr>
+                        <td>@building.GetUnitType().ToString()</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: @((building.GetHitPoints() * 100.0 / building.GetUnitType().MaxHitPoints()))%"
+                                     aria-valuenow="@building.GetHitPoints()" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="@building.GetUnitType().MaxHitPoints()">
+                                    @building.GetHitPoints() / @building.GetUnitType().MaxHitPoints()
+                                </div>
+                            </div>
+                        </td>
+                        <td>@(building.IsCompleted() ? "✓" : "Building...")</td>
+                        <td>(@building.GetPosition().X, @building.GetPosition().Y)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="text-muted fst-italic">No buildings available</p>
+    }
+</div>
+
+@code {
+    private System.Threading.Timer? timer;
+
+    protected override void OnInitialized()
+    {
+        // Refresh the UI every 500ms
+        timer = new (_ =>
+        {
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+
+    private int GetFrameCount() => BotService.Game?.GetFrameCount() ?? 0;
+    private int GetMinerals() => BotService.Game?.Self()?.Minerals() ?? 0;
+    private int GetGas() => BotService.Game?.Self()?.Gas() ?? 0;
+    private int GetSupplyUsed() => BotService.Game?.Self()?.SupplyUsed() ?? 0;
+    private int GetSupplyTotal() => BotService.Game?.Self()?.SupplyTotal() ?? 0;
+
+    private IEnumerable<BWAPI.NET.Unit> GetUnits()
+    {
+        if (BotService.Game == null) return Enumerable.Empty<BWAPI.NET.Unit>();
+        
+        var allUnits = BotService.Game.Self()?.GetUnits() ?? Enumerable.Empty<BWAPI.NET.Unit>();
+        return allUnits.Where(u => u.Exists() && !u.GetUnitType().IsBuilding());
+    }
+
+    private IEnumerable<BWAPI.NET.Unit> GetBuildings()
+    {
+        if (BotService.Game == null) return Enumerable.Empty<BWAPI.NET.Unit>();
+        
+        var allUnits = BotService.Game.Self()?.GetUnits() ?? Enumerable.Empty<BWAPI.NET.Unit>();
+        return allUnits.Where(u => u.Exists() && u.GetUnitType().IsBuilding());
+    }
+}

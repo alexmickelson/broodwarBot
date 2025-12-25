@@ -1,262 +1,46 @@
 ﻿@page "/"
-@rendermode InteractiveServer
-@using BWAPI.NET
 @using MyBotWeb.Services
 @inject BotService BotService
+@rendermode InteractiveServer
 @implements IDisposable
 
 <PageTitle>StarCraft Bot Dashboard</PageTitle>
 
-<h1>StarCraft Bot Dashboard</h1>
+<h1 class="text-light mb-4" >StarCraft Bot Dashboard</h1>
 
-<div class="game-status-section">
-    <h2>Game Status</h2>
-    <div class="status-grid">
-        <div class="status-item">
-            <strong>Connection:</strong> 
-            <span class="@(BotService.IsConnected ? "status-good" : "status-bad")">
-                @(BotService.IsConnected ? "Connected" : "Disconnected")
-            </span>
-        </div>
-        <div class="status-item">
-            <strong>In Game:</strong> 
-            <span class="@(BotService.IsInGame ? "status-good" : "status-neutral")">
-                @(BotService.IsInGame ? "Yes" : "No")
-            </span>
-        </div>
-        <div class="status-item">
-            <strong>Status:</strong> @BotService.GameStatus
-        </div>
-        <div class="status-item">
-            <strong>Frame:</strong> @GetFrameCount()
-        </div>
-    </div>
-</div>
-
-<div class="resources-section">
-    <h2>Resources</h2>
-    <div class="resource-grid">
-        <div class="resource-item">
-            <strong>Minerals:</strong> @GetMinerals()
-        </div>
-        <div class="resource-item">
-            <strong>Gas:</strong> @GetGas()
-        </div>
-        <div class="resource-item">
-            <strong>Supply:</strong> @GetSupplyUsed() / @GetSupplyTotal()
-        </div>
-    </div>
-</div>
-
-<div class="units-section">
-    <h2>Units (@GetUnits().Count())</h2>
-    @if (GetUnits().Any())
-    {
-        <table class="unit-table">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Health</th>
-                    <th>Completed</th>
-                    <th>Position</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var unit in GetUnits())
-                {
-                    <tr>
-                        <td>@unit.GetUnitType().ToString()</td>
-                        <td>
-                            <div class="health-bar">
-                                <div class="health-fill" style="width: @((unit.GetHitPoints() * 100.0 / unit.GetUnitType().MaxHitPoints()))%"></div>
-                                <span class="health-text">@unit.GetHitPoints() / @unit.GetUnitType().MaxHitPoints()</span>
-                            </div>
-                        </td>
-                        <td>@(unit.IsCompleted() ? "✓" : "Building...")</td>
-                        <td>(@unit.GetPosition().X, @unit.GetPosition().Y)</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-    else
-    {
-        <p class="no-data">No units available</p>
-    }
-</div>
-
-<div class="buildings-section">
-    <h2>Buildings (@GetBuildings().Count())</h2>
-    @if (GetBuildings().Any())
-    {
-        <table class="unit-table">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Health</th>
-                    <th>Completed</th>
-                    <th>Position</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var building in GetBuildings())
-                {
-                    <tr>
-                        <td>@building.GetUnitType().ToString()</td>
-                        <td>
-                            <div class="health-bar">
-                                <div class="health-fill" style="width: @((building.GetHitPoints() * 100.0 / building.GetUnitType().MaxHitPoints()))%"></div>
-                                <span class="health-text">@building.GetHitPoints() / @building.GetUnitType().MaxHitPoints()</span>
-                            </div>
-                        </td>
-                        <td>@(building.IsCompleted() ? "✓" : "Building...")</td>
-                        <td>(@building.GetPosition().X, @building.GetPosition().Y)</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-    else
-    {
-        <p class="no-data">No buildings available</p>
-    }
-</div>
+@if (!_gameStarted)
+{
+    <LaunchControl OnGameReady="HandleGameReady" />
+}
+else
+{
+    <GameInfo />
+}
 
 @code {
-    private System.Threading.Timer? timer;
+    private bool _gameStarted = false;
 
     protected override void OnInitialized()
     {
-        // Refresh the UI every 500ms
-        timer = new System.Threading.Timer(_ =>
-        {
-            InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
+        BotService.GameStarted += OnGameStarted;
+    }
+
+    private void HandleGameReady()
+    {
+        _gameStarted = true;
+        StateHasChanged();
+    }
+
+    private void OnGameStarted()
+    {
+        _gameStarted = true;
+        InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        timer?.Dispose();
-    }
-
-    private int GetFrameCount() => BotService.Game?.GetFrameCount() ?? 0;
-    private int GetMinerals() => BotService.Game?.Self()?.Minerals() ?? 0;
-    private int GetGas() => BotService.Game?.Self()?.Gas() ?? 0;
-    private int GetSupplyUsed() => BotService.Game?.Self()?.SupplyUsed() ?? 0;
-    private int GetSupplyTotal() => BotService.Game?.Self()?.SupplyTotal() ?? 0;
-
-    private IEnumerable<BWAPI.NET.Unit> GetUnits()
-    {
-        if (BotService.Game == null) return Enumerable.Empty<BWAPI.NET.Unit>();
-        
-        var allUnits = BotService.Game.Self()?.GetUnits() ?? Enumerable.Empty<BWAPI.NET.Unit>();
-        return allUnits.Where(u => u.Exists() && !u.GetUnitType().IsBuilding());
-    }
-
-    private IEnumerable<BWAPI.NET.Unit> GetBuildings()
-    {
-        if (BotService.Game == null) return Enumerable.Empty<BWAPI.NET.Unit>();
-        
-        var allUnits = BotService.Game.Self()?.GetUnits() ?? Enumerable.Empty<BWAPI.NET.Unit>();
-        return allUnits.Where(u => u.Exists() && u.GetUnitType().IsBuilding());
+        BotService.GameStarted -= OnGameStarted;
     }
 }
 
-<style>
-    .game-status-section, .resources-section, .units-section, .buildings-section {
-        margin-bottom: 2rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background: #f9f9f9;
-    }
-
-    h2 {
-        margin-top: 0;
-        color: #333;
-    }
-
-    .status-grid, .resource-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-    }
-
-    .status-item, .resource-item {
-        padding: 0.5rem;
-        background: white;
-        border-radius: 4px;
-        border: 1px solid #e0e0e0;
-    }
-
-    .status-good {
-        color: #28a745;
-        font-weight: bold;
-    }
-
-    .status-bad {
-        color: #dc3545;
-        font-weight: bold;
-    }
-
-    .status-neutral {
-        color: #6c757d;
-        font-weight: bold;
-    }
-
-    .unit-table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-    }
-
-    .unit-table th,
-    .unit-table td {
-        padding: 0.75rem;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
-    }
-
-    .unit-table th {
-        background: #007bff;
-        color: white;
-        font-weight: bold;
-    }
-
-    .unit-table tr:hover {
-        background: #f5f5f5;
-    }
-
-    .health-bar {
-        position: relative;
-        width: 100%;
-        height: 20px;
-        background: #e0e0e0;
-        border-radius: 4px;
-        overflow: hidden;
-    }
-
-    .health-fill {
-        position: absolute;
-        height: 100%;
-        background: linear-gradient(to right, #28a745, #20c997);
-        transition: width 0.3s ease;
-    }
-
-    .health-text {
-        position: relative;
-        display: block;
-        text-align: center;
-        line-height: 20px;
-        font-size: 0.8rem;
-        font-weight: bold;
-        color: #333;
-        text-shadow: 1px 1px 1px rgba(255,255,255,0.8);
-    }
-
-    .no-data {
-        color: #6c757d;
-        font-style: italic;
-    }
-</style>
 

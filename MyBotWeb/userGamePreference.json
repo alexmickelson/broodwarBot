@@ -1,0 +1,19 @@
+{
+  "Map": "maps/(2)Boxer.scm",
+  "PlayerRace": "Protoss",
+  "HumanPlayerSlots": 0,
+  "ComputerPlayerSlots": 1,
+  "ComputerRaces": [
+    "Random"
+  ],
+  "PlayerSlots": [
+    "Server",
+    "Computer - Random",
+    "None",
+    "None",
+    "None",
+    "None",
+    "None",
+    "None"
+  ]
+}

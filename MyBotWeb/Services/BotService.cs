@@ -6,12 +6,14 @@ namespace MyBotWeb.Services;
 public class BotService : DefaultBWListener
 {
     private BWClient? _bwClient;
-    public Game? Game  { get; private set; }
+    public Game? Game { get; private set; }
     private bool _isProcessingFrame = false;
     private readonly MyBot.MyBot _myBot;
     public bool IsConnected { get; private set; }
     public bool IsInGame { get; private set; }
     public string GameStatus { get; private set; } = "Not Connected";
+
+    public event Action? GameStarted;
 
     public BotService()
     {
@@ -20,18 +22,10 @@ public class BotService : DefaultBWListener
 
     public void StartBot()
     {
-        try
-        {
-            _bwClient = new BWClient(this);
-            IsConnected = true;
-            GameStatus = "Connected - Waiting for Game";
-            _bwClient.StartGame();
-        }
-        catch (Exception ex)
-        {
-            GameStatus = $"Error: {ex.Message}";
-            IsConnected = false;
-        }
+        _bwClient = new BWClient(this);
+        IsConnected = true;
+        GameStatus = "Connected - Waiting for Game";
+        _bwClient.StartGame();
     }
 
     public override void OnStart()
@@ -39,6 +33,9 @@ public class BotService : DefaultBWListener
         Game = _bwClient?.Game;
         IsInGame = true;
         GameStatus = "In Game - Playing";
+
+        // Trigger the GameStarted event
+        GameStarted?.Invoke();
 
         // Delegate to MyBot
         if (Game != null)

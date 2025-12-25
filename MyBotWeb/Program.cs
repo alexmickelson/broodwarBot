@@ -9,15 +9,14 @@ builder.Services.AddRazorComponents()
 
 // Add bot service as singleton
 builder.Services.AddSingleton<BotService>();
+builder.Services.AddSingleton<StarCraftService>();
+builder.Services.AddSingleton<UserPreferencesService>();
 
 var app = builder.Build();
 
-// Start the bot in the background
-var botService = app.Services.GetRequiredService<BotService>();
-_ = Task.Run(() => botService.StartBot());
+var starCraftService = app.Services.GetRequiredService<StarCraftService>();
 
-
-
+app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.MapStaticAssets();

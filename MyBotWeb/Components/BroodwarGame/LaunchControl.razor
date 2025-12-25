@@ -1,0 +1,210 @@
+@using MyBotWeb.Services
+@inject StarCraftService StarCraftService
+@inject BotService BotService
+@inject UserPreferencesService PreferencesService
+
+<div class="launch-section bg-dark border border-secondary rounded p-4">
+    @if (!_isLaunching && !_isReady)
+    {
+        <h2 class="text-light mb-4">Game Configuration</h2>
+        
+        <div class="configuration-form mb-4">
+            <div class="mb-3">
+                <label class="form-label text-light">Map</label>
+                <select class="form-select" @bind="_mapPath" @bind:after="UpdateMaxPlayers">
+                    @foreach (var map in _availableMaps)
+                    {
+                        <option value="@map">@map</option>
+                    }
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-light">Player Slots (@_maxPlayers players)</label>
+                <div class="player-slots">
+                    <div class="input-group mb-2">
+                        <span class="input-group-text player-label">Player 1</span>
+                        <input type="text" class="form-control" value="Server (You)" readonly style="flex: 0 0 auto; width: 150px;" />
+                        <select class="form-select" @bind="_playerRace">
+                            <option value="Terran">Terran</option>
+                            <option value="Protoss">Protoss</option>
+                            <option value="Zerg">Zerg</option>
+                            <option value="Random">Random</option>
+                        </select>
+                    </div>
+                    @for (int i = 1; i < _maxPlayers; i++)
+                    {
+                        var index = i;
+                        <div class="input-group mb-2">
+                            <span class="input-group-text player-label">Player @(i + 1)</span>
+                            <select class="form-select" @bind="_playerSlots[index]">
+                                <option value="None">None</option>
+                                <option value="Open">Open (Other Player)</option>
+                                <option value="Computer - Terran">Computer - Terran</option>
+                                <option value="Computer - Zerg">Computer - Zerg</option>
+                                <option value="Computer - Protoss">Computer - Protoss</option>
+                                <option value="Computer - Random">Computer - Random</option>
+                            </select>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button class="btn btn-primary btn-lg" @onclick="StartLaunch">
+                <i class="bi bi-play-fill"></i> Launch StarCraft Bot
+            </button>
+        </div>
+    }
+    else if (_isLaunching)
+    {
+        <h2 class="text-light mb-4">Launching...</h2>
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        @if (_waitingForUser)
+        {
+            <div class="alert alert-warning mt-3" role="alert">
+                <strong>Action Required:</strong> Please click "Start" in Chaoslauncher, then start a game in StarCraft
+            </div>
+        }
+    }
+    else if (_isReady)
+    {
+        <h2 class="text-success mb-3">✓ Connected!</h2>
+        <p class="text-light">Bot is connected to StarCraft</p>
+    }
+</div>
+
+@code {
+    private bool _isLaunching = false;
+    private bool _isReady = false;
+    private bool _waitingForUser = false;
+    private List<string> _statusMessages = new();
+    private string _mapPath = "maps/(2)Boxer.scm";
+    private string _playerRace = "Protoss";
+    private List<string> _availableMaps = new();
+    private int _maxPlayers = 2;
+    private string[] _playerSlots = new[] 
+    { 
+        "Server", // Player 1 (always the server)
+        "Computer - Random", 
+        "None", 
+        "None", 
+        "None", 
+        "None", 
+        "None", 
+        "None" 
+    };
+
+    [Parameter]
+    public EventCallback OnGameReady { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _availableMaps = StarCraftService.GetMapOptions();
+        
+        // Load saved preferences
+        var savedPreferences = PreferencesService.LoadPreferences();
+        if (savedPreferences != null)
+        {
+            _mapPath = savedPreferences.Map;
+            _playerRace = savedPreferences.PlayerRace;
+            if (savedPreferences.PlayerSlots != null && savedPreferences.PlayerSlots.Length == 8)
+            {
+                _playerSlots = savedPreferences.PlayerSlots;
+            }
+        }
+        
+        // Validate map exists in available maps
+        if (_availableMaps.Count > 0 && !_availableMaps.Contains(_mapPath))
+        {
+            _mapPath = _availableMaps[0];
+        }
+        
+        UpdateMaxPlayers();
+    }
+
+    private int GetMaxPlayersFromMap(string mapPath)
+    {
+        // Extract player count from map name like "maps/(2)Boxer.scm" or "(4)Blood Bath.scm"
+        var fileName = Path.GetFileName(mapPath);
+        if (fileName.StartsWith("(") && fileName.Contains(")"))
+        {
+            var endIndex = fileName.IndexOf(")");
+            var numberStr = fileName.Substring(1, endIndex - 1);
+            if (int.TryParse(numberStr, out int playerCount))
+            {
+                return playerCount;
+            }
+        }
+        return 8; // Default to 8 if we can't parse
+    }
+
+    private void UpdateMaxPlayers()
+    {
+        _maxPlayers = GetMaxPlayersFromMap(_mapPath);
+    }
+
+    private async Task StartLaunch()
+    {
+        // Count human players (excluding server) and computer players
+        int humanPlayerSlots = _playerSlots.Skip(1).Count(s => s == "Open");
+        var computerPlayers = _playerSlots.Skip(1)
+            .Select((slot, index) => (slot, index))
+            .Where(x => x.slot.StartsWith("Computer - "))
+            .ToList();
+        
+        int computerPlayerSlots = computerPlayers.Count;
+        string[] computerRaces = computerPlayers
+            .Select(x => x.slot.Replace("Computer - ", ""))
+            .ToArray();
+
+        var gamePreferences = new GamePreferences(
+            Map: _mapPath,
+            PlayerRace: _playerRace,
+            HumanPlayerSlots: humanPlayerSlots,
+            ComputerPlayerSlots: computerPlayerSlots,
+            ComputerRaces: computerRaces,
+            PlayerSlots: _playerSlots
+        );
+
+        // Save preferences for next time
+        PreferencesService.SavePreferences(gamePreferences);
+
+        _isLaunching = true;
+        StateHasChanged();
+        var _ = Task.Run(() => BotService.StartBot());
+
+        await Task.Delay(500);
+
+        await StarCraftService.StartStarCraftAsync(gamePreferences);
+        StateHasChanged();
+    }
+
+}
+
+<style>
+    .launch-section {
+        min-height: 400px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+
+    .player-slots {
+        max-width: 500px;
+    }
+
+    .player-label {
+        min-width: 90px;
+    }
+
+    .configuration-form {
+        width: 100%;
+        max-width: 600px;
+    }
+</style>
