@@ -6,25 +6,118 @@ public class MyBot
 {
     private Game? _game;
 
+    private int targetWorkerCount = 35;
+
+    public List<UnitType> BuildQueue { get; } = new List<UnitType> // start with 9 probes
+    {
+        UnitType.Protoss_Probe,
+        UnitType.Protoss_Probe,
+        UnitType.Protoss_Pylon,
+        UnitType.Protoss_Probe,
+        UnitType.Protoss_Gateway,
+        UnitType.Protoss_Probe,
+        UnitType.Protoss_Cybernetics_Core,
+        UnitType.Protoss_Probe,
+        UnitType.Protoss_Zealot,
+    };
+
     public void OnStart(Game game)
     {
         _game = game;
+
     }
 
     public void OnEnd(bool isWinner)
     {
-        // Bot logic for game end
     }
 
     public void OnFrame()
     {
         if (_game == null) return;
+        // BuildWorkers(_game);
+        HandleBuildOrder(_game);
+        MineWorkers(_game);
+    }
 
-        _game.DrawTextScreen(100, 100, "Bot running via Blazor!");
-
-        if (_game.GetFrameCount() % 10 == 0)
+    private void HandleBuildOrder(Game game)
+    {
+        var nextUnit = BuildQueue.FirstOrDefault();
+        game.DrawTextScreen(100, 100, $"Next Unit: {nextUnit}");
+        var nextUnitMineralCost = nextUnit.MineralPrice();
+        var currentMinerals = game.Self().Minerals();
+        if (nextUnitMineralCost > currentMinerals)
         {
-            System.Console.WriteLine("Frame: " + _game.GetFrameCount());
+            game.DrawTextScreen(100, 120, $"Not enough minerals for {nextUnit} (Have: {currentMinerals}, Need: {nextUnitMineralCost})");
+            return;
+        }
+        if (nextUnit.IsBuilding())
+        {
+            var miningWorkers = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsWorker() && u.IsGatheringMinerals());
+            var workerToBuild = miningWorkers.FirstOrDefault();
+            if (workerToBuild == null)
+            {
+                game.DrawTextScreen(100, 120, $"No available worker to build {nextUnit}");
+                return;
+            }
+            workerToBuild.Build(nextUnit);
+        }
+        else
+        {
+            var idleBuldings = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.IsIdle());
+            var (typeToBuild, typeToBuildId) = nextUnit.WhatBuilds();
+
+
+            var builder = idleBuldings.FirstOrDefault(b => b.GetUnitType() == typeToBuild);
+            if (builder == null)
+            {
+                game.DrawTextScreen(100, 120, $"No available ({typeToBuild}, {typeToBuildId}) for {nextUnit}");
+                return;
+            }
+            builder.Train(nextUnit);
+        }
+        BuildQueue.RemoveAt(0);
+    }
+
+    private void BuildWorkers(Game game)
+    {
+        int workerCount = game.GetAllUnits().Count(u => u.GetUnitType().IsWorker() && u.GetPlayer() == game.Self());
+        bool hasEnoughMineralsForAnotherWorker = game.Self().Minerals() >= 50;
+        var availableTownHalls = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsResourceDepot()).Where(th => th.IsIdle());
+        game.DrawTextScreen(100, 100, $"Workers: {workerCount} / {targetWorkerCount}, {hasEnoughMineralsForAnotherWorker}");
+
+        if (workerCount < targetWorkerCount && hasEnoughMineralsForAnotherWorker && availableTownHalls.Any())
+        {
+            var selectedTownHall = availableTownHalls.First();
+            game.DrawTextScreen(100, 120, $"Selected Town Hall: {selectedTownHall}");
+            selectedTownHall?.Train(UnitType.Protoss_Probe);
+        }
+    }
+
+    private void MineWorkers(Game game)
+    {
+        var workers = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsWorker());
+        foreach (var unit in workers)
+        {
+            if (unit.IsIdle())
+            {
+                Unit? closestMineral = null;
+                int closestDistance = int.MaxValue;
+
+                foreach (Unit mineral in game.GetMinerals())
+                {
+                    int distance = unit.GetDistance(mineral);
+                    if (distance < closestDistance)
+                    {
+                        closestMineral = mineral;
+                        closestDistance = distance;
+                    }
+                }
+
+                if (closestMineral != null)
+                {
+                    unit.Gather(closestMineral);
+                }
+            }
         }
     }
 
@@ -32,26 +125,26 @@ public class MyBot
     {
         if (_game == null) return;
 
-        if (unit.GetUnitType().IsWorker())
-        {
-            Unit? closestMineral = null;
-            int closestDistance = int.MaxValue;
+        // if (unit.GetUnitType().IsWorker())
+        // {
+        //     Unit? closestMineral = null;
+        //     int closestDistance = int.MaxValue;
 
-            foreach (Unit mineral in _game.GetMinerals())
-            {
-                int distance = unit.GetDistance(mineral);
-                if (distance < closestDistance)
-                {
-                    closestMineral = mineral;
-                    closestDistance = distance;
-                }
-            }
+        //     foreach (Unit mineral in _game.GetMinerals())
+        //     {
+        //         int distance = unit.GetDistance(mineral);
+        //         if (distance < closestDistance)
+        //         {
+        //             closestMineral = mineral;
+        //             closestDistance = distance;
+        //         }
+        //     }
 
-            if (closestMineral != null)
-            {
-                unit.Gather(closestMineral);
-            }
-        }
+        //     if (closestMineral != null)
+        //     {
+        //         unit.Gather(closestMineral);
+        //     }
+        // }
     }
 
     public void OnUnitDestroy(Unit unit)

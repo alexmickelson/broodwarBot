@@ -8,38 +8,25 @@
 
 <h1 class="text-light mb-4" >StarCraft Bot Dashboard</h1>
 
-@if (!_gameStarted)
+@if (!BotService.IsInGame)
 {
-    <LaunchControl OnGameReady="HandleGameReady" />
+    <LaunchControl />
 }
 else
 {
+    <EndGame />
     <GameInfo />
 }
 
 @code {
-    private bool _gameStarted = false;
-
+    private void Reload() => InvokeAsync(StateHasChanged);
     protected override void OnInitialized()
     {
-        BotService.GameStarted += OnGameStarted;
+        BotService.GameStartedOrEnded += Reload;
     }
-
-    private void HandleGameReady()
-    {
-        _gameStarted = true;
-        StateHasChanged();
-    }
-
-    private void OnGameStarted()
-    {
-        _gameStarted = true;
-        InvokeAsync(StateHasChanged);
-    }
-
     public void Dispose()
     {
-        BotService.GameStarted -= OnGameStarted;
+        BotService.GameStartedOrEnded -= Reload;
     }
 }
 

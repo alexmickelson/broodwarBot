@@ -1,33 +1,9 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace MyBotWeb.Services;
 
 public class StarCraftService : IDisposable
 {
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern IntPtr FindWindow(string? lpClassName, string lpWindowName);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string? lpszClass, string? lpszWindow);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern bool EnumChildWindows(IntPtr hwndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
-
-    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-    private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
-
-    private delegate bool EnumChildProc(IntPtr hwnd, IntPtr lParam);
-
-    private const uint BM_CLICK = 0x00F5;
-    private const uint WM_CLOSE = 0x0010;
-
     private Process? _chaosLauncherProcess;
     private readonly string _starcraftBasePath = Path.Combine(
         Directory.GetCurrentDirectory(),
@@ -54,16 +30,14 @@ public class StarCraftService : IDisposable
         return mapFiles;
     }
 
-    public async Task StartStarCraftAsync(GamePreferences? gamePreferences = null, bool useMultiInstance = false)
+    public async Task StartStarCraftAsync(GamePreferences? gamePreferences = null)
     {
         gamePreferences ??= new GamePreferences();
 
         // Configure bwapi.ini for auto-start
         ConfigureBwapiIni(gamePreferences);
 
-        var chaosLauncherExe = useMultiInstance
-            ? "Chaoslauncher - MultiInstance.exe"
-            : "Chaoslauncher.exe";
+        var chaosLauncherExe = "Chaoslauncher.exe";
 
         var startInfo = new ProcessStartInfo
         {
@@ -80,23 +54,23 @@ public class StarCraftService : IDisposable
 
     private async Task ClickStartButton()
     {
-        await Task.Delay(2000);
+        await Task.Delay(1000);
 
         IntPtr startButtonHandle = IntPtr.Zero;
-        IntPtr chaosWindow = FindWindow(null, "Chaoslauncher");
+        IntPtr chaosWindow = WindowUtils.FindWindow(null, "Chaoslauncher");
 
         if (chaosWindow != IntPtr.Zero)
         {
             Console.WriteLine("Found Chaoslauncher window");
 
             // Enumerate all child windows to find the Start button
-            EnumChildWindows(chaosWindow, (hwnd, lParam) =>
+            WindowUtils.EnumChildWindows(chaosWindow, (hwnd, lParam) =>
             {
                 var className = new System.Text.StringBuilder(256);
-                GetClassName(hwnd, className, className.Capacity);
+                WindowUtils.GetClassName(hwnd, className, className.Capacity);
 
                 var windowText = new System.Text.StringBuilder(256);
-                GetWindowText(hwnd, windowText, windowText.Capacity);
+                WindowUtils.GetWindowText(hwnd, windowText, windowText.Capacity);
 
                 string text = windowText.ToString();
                 string cls = className.ToString();
@@ -118,7 +92,7 @@ public class StarCraftService : IDisposable
             if (startButtonHandle != IntPtr.Zero)
             {
                 Console.WriteLine("Clicking Start button...");
-                SendMessage(startButtonHandle, BM_CLICK, IntPtr.Zero, IntPtr.Zero);
+                WindowUtils.ClickButton(startButtonHandle);
             }
             else
             {
@@ -198,27 +172,41 @@ public class StarCraftService : IDisposable
 
         File.WriteAllLines(bwapiIniPath, lines);
         Console.WriteLine("BWAPI configuration updated successfully");
+        
+        // Write bot configuration file for settings that need to be read by the bot code
+        WriteBotConfig(gamePreferences);
+    }
+    
+    private void WriteBotConfig(GamePreferences gamePreferences)
+    {
+        var botConfigPath = Path.Combine(_starcraftBasePath, "bwapi-data", "AI", "bot-config.txt");
+        try
+        {
+            var config = $"AllowUserControl={gamePreferences.AllowUserControl}";
+            File.WriteAllText(botConfigPath, config);
+            Console.WriteLine($"Bot config written: {config}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error writing bot config: {ex.Message}");
+        }
     }
 
     private void CloseStarCraftWindow()
     {
         Console.WriteLine("Looking for StarCraft window...");
         
-        // Try common StarCraft window names
-        string[] windowTitles = { "Brood War", "StarCraft", "Broodwar" };
+        IntPtr starcraftWindow = WindowUtils.FindWindowByTitles("Brood War", "StarCraft", "Broodwar");
         
-        foreach (var title in windowTitles)
+        if (starcraftWindow != IntPtr.Zero)
         {
-            IntPtr starcraftWindow = FindWindow(null, title);
-            if (starcraftWindow != IntPtr.Zero)
-            {
-                Console.WriteLine($"Found {title} window, sending close message...");
-                SendMessage(starcraftWindow, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-                return;
-            }
+            Console.WriteLine("Found StarCraft window, sending close message...");
+            WindowUtils.CloseWindow(starcraftWindow);
         }
-        
-        Console.WriteLine("StarCraft window not found");
+        else
+        {
+            Console.WriteLine("StarCraft window not found");
+        }
     }
 
     public void StopChaosLauncher()

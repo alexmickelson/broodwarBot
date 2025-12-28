@@ -1,14 +1,15 @@
 {
   "Map": "maps/(2)Boxer.scm",
   "PlayerRace": "Protoss",
+  "AllowUserControl": true,
   "HumanPlayerSlots": 0,
   "ComputerPlayerSlots": 1,
   "ComputerRaces": [
-    "Random"
+    "Terran"
   ],
   "PlayerSlots": [
     "Server",
-    "Computer - Random",
+    "Computer - Terran",
     "None",
     "None",
     "None",

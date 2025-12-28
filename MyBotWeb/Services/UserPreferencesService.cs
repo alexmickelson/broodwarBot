@@ -4,15 +4,10 @@ namespace MyBotWeb.Services;
 
 public class UserPreferencesService
 {
-    private readonly string _preferencesFilePath;
-
-    public UserPreferencesService()
-    {
-        _preferencesFilePath = Path.Combine(
-            Directory.GetCurrentDirectory(),
-            "userGamePreference.json"
-        );
-    }
+    private readonly string _preferencesFilePath = Path.Combine(
+        Directory.GetCurrentDirectory(),
+        "userGamePreference.json"
+    );
 
     public GamePreferences? LoadPreferences()
     {

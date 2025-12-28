@@ -13,7 +13,7 @@ public class BotService : DefaultBWListener
     public bool IsInGame { get; private set; }
     public string GameStatus { get; private set; } = "Not Connected";
 
-    public event Action? GameStarted;
+    public event Action? GameStartedOrEnded;
 
     public BotService()
     {
@@ -31,13 +31,11 @@ public class BotService : DefaultBWListener
     public override void OnStart()
     {
         Game = _bwClient?.Game;
+        Game?.EnableFlag(Flag.UserInput);
         IsInGame = true;
         GameStatus = "In Game - Playing";
+        GameStartedOrEnded?.Invoke();
 
-        // Trigger the GameStarted event
-        GameStarted?.Invoke();
-
-        // Delegate to MyBot
         if (Game != null)
         {
             _myBot.OnStart(Game);

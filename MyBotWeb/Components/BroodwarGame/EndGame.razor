@@ -1,0 +1,54 @@
+@using MyBotWeb.Services
+@inject BotService BotService
+@inject StarCraftService StarCraftService
+
+<div class="end-game-section bg-dark border border-danger rounded p-3 mb-3">
+    <h2 class="text-light">Game Control</h2>
+    
+    @if (_isClosing)
+    {
+        <div class="alert alert-info">
+            <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Closing...</span>
+            </div>
+            Closing StarCraft and resetting...
+        </div>
+    }
+    else
+    {
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-danger" @onclick="HandleEndGameClick">
+                <i class="bi bi-x-circle me-1"></i> End Game & Close StarCraft
+            </button>
+            <span class="text-muted small">This will close all StarCraft instances and return to the launch screen</span>
+        </div>
+    }
+</div>
+
+@code {
+
+    private bool _isClosing = false;
+
+    private async Task HandleEndGameClick()
+    {
+        _isClosing = true;
+        StateHasChanged();
+
+        try
+        {
+            // Close StarCraft instances
+            StarCraftService.Dispose();
+            
+            // Give a brief moment for processes to close
+            await Task.Delay(500);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error ending game: {ex.Message}");
+        }
+        finally
+        {
+            _isClosing = false;
+        }
+    }
+}
