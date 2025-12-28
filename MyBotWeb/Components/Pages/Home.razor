@@ -5,8 +5,15 @@
 @implements IDisposable
 
 <PageTitle>StarCraft Bot Dashboard</PageTitle>
-
-<h1 class="text-light mb-4" >StarCraft Bot Dashboard</h1>
+<div class="flex flex-row justify-between align-center">
+    <h1 class="">StarCraft Bot Dashboard</h1>
+    @if (BotService.IsInGame)
+    {
+        <div class="my-auto">
+            <EndGame />
+        </div>
+    }
+</div>
 
 @if (!BotService.IsInGame)
 {
@@ -14,7 +21,6 @@
 }
 else
 {
-    <EndGame />
     <GameInfo />
 }
 
@@ -29,5 +35,3 @@ else
         BotService.GameStartedOrEnded -= Reload;
     }
 }
-
-

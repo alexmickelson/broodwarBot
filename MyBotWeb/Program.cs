@@ -12,9 +12,9 @@ builder.Services.AddSingleton<BotService>();
 builder.Services.AddSingleton<StarCraftService>();
 builder.Services.AddSingleton<UserPreferencesService>();
 
-var app = builder.Build();
+builder.Services.AddHostedService<CssWatcherService>();
 
-var starCraftService = app.Services.GetRequiredService<StarCraftService>();
+var app = builder.Build();
 
 app.UseStaticFiles();
 app.UseAntiforgery();

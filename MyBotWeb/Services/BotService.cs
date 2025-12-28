@@ -8,24 +8,28 @@ public class BotService : DefaultBWListener
     private BWClient? _bwClient;
     public Game? Game { get; private set; }
     private bool _isProcessingFrame = false;
-    private readonly MyBot.MyBot _myBot;
-    public bool IsConnected { get; private set; }
+    private MyBot.MyBot _myBot = new MyBot.MyBot();
     public bool IsInGame { get; private set; }
     public string GameStatus { get; private set; } = "Not Connected";
 
     public event Action? GameStartedOrEnded;
-
-    public BotService()
-    {
-        _myBot = new MyBot.MyBot();
-    }
+    private bool shouldLeave = false;
 
     public void StartBot()
     {
+        _myBot = new MyBot.MyBot();
         _bwClient = new BWClient(this);
-        IsConnected = true;
         GameStatus = "Connected - Waiting for Game";
         _bwClient.StartGame();
+    }
+
+    public void ResetBot()
+    {
+        _bwClient = null;
+        Game = null;
+        IsInGame = false;
+        GameStatus = "Not Connected";
+        GameStartedOrEnded?.Invoke();
     }
 
     public override void OnStart()
@@ -44,30 +48,21 @@ public class BotService : DefaultBWListener
 
     public override void OnEnd(bool isWinner)
     {
+        Console.WriteLine("Game ended. Winner: " + isWinner);
         GameStatus = isWinner ? "Game Over - Victory!" : "Game Over - Defeat";
         IsInGame = false;
 
-        // Delegate to MyBot
         _myBot.OnEnd(isWinner);
+
+        GameStartedOrEnded?.Invoke();
     }
 
     public override void OnFrame()
     {
         if (Game == null) return;
 
-        // Skip this frame if the previous one is still processing
-        if (_isProcessingFrame) return;
+        _myBot.OnFrame();
 
-        _isProcessingFrame = true;
-        try
-        {
-            // Delegate to MyBot
-            _myBot.OnFrame();
-        }
-        finally
-        {
-            _isProcessingFrame = false;
-        }
     }
 
     public override void OnUnitComplete(Unit unit)

@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+@theme {
+  /* Add custom theme configuration here if needed */
+}
+
+/* Base HTML element styles using Tailwind */
+html {
+  @apply h-full antialiased;
+}
+
+body {
+  @apply h-full;
+}
+
+h1 {
+  @apply text-4xl font-bold tracking-tight mb-4;
+}
+
+h2 {
+  @apply text-3xl font-semibold tracking-tight mb-3;
+}
+
+h3 {
+  @apply text-2xl font-semibold mb-3;
+}
+
+h4 {
+  @apply text-xl font-semibold mb-2;
+}
+
+h5 {
+  @apply text-lg font-semibold mb-2;
+}
+
+h6 {
+  @apply text-base font-semibold mb-2;
+}
+
+p {
+  @apply mb-4 leading-relaxed;
+}
+
+a {
+  @apply underline;
+}
+
+ul {
+  @apply list-disc list-inside mb-4 space-y-1;
+}
+
+ol {
+  @apply list-decimal list-inside mb-4 space-y-1;
+}
+
+li {
+  @apply leading-relaxed;
+}
+
+blockquote {
+  @apply border-l-4 pl-4 italic my-4;
+}
+
+code {
+  @apply px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+pre {
+  @apply p-4 rounded-lg overflow-x-auto mb-4;
+}
+
+pre code {
+  @apply p-0;
+}
+
+table {
+  @apply w-full border-collapse mb-4;
+}
+
+th {
+  @apply font-semibold text-left px-4 py-2 border;
+}
+
+td {
+  @apply px-4 py-2 border;
+}
+
+button {
+  @apply cursor-pointer;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea,
+select:not(.unstyled) {
+  @apply w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2;
+}
+
+
+label {
+  @apply block text-sm font-medium mb-1;
+}
+
+hr {
+  @apply my-8;
+}
+
+img {
+  @apply max-w-full h-auto;
+}
+
+strong, b {
+  @apply font-bold;
+}
+
+em, i {
+  @apply italic;
+}
+
+small {
+  @apply text-sm;
+}

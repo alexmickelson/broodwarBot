@@ -3,3 +3,6 @@ Starcraft
 bin/
 obj/
 publish/
+
+node_modules/
+MyBotWeb/wwwroot/app.css

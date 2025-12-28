@@ -2,15 +2,13 @@ using System.Diagnostics;
 
 namespace MyBotWeb.Services;
 
-public class StarCraftService : IDisposable
+public class StarCraftService
 {
     private Process? _chaosLauncherProcess;
     private readonly string _starcraftBasePath = Path.Combine(
         Directory.GetCurrentDirectory(),
         "..", "Starcraft"
     );
-
-    private bool _disposed = false;
 
     public List<string> GetMapOptions()
     {
@@ -37,18 +35,17 @@ public class StarCraftService : IDisposable
         // Configure bwapi.ini for auto-start
         ConfigureBwapiIni(gamePreferences);
 
-        var chaosLauncherExe = "Chaoslauncher.exe";
-
         var startInfo = new ProcessStartInfo
         {
-            FileName = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher", chaosLauncherExe),
+            FileName = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher", "Chaoslauncher.exe"),
             WorkingDirectory = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher"),
             UseShellExecute = false,
+            Verb = "", // Ensure no elevation
+            CreateNoWindow = false,
         };
 
         _chaosLauncherProcess = Process.Start(startInfo);
 
-        // Wait for Chaoslauncher window to appear and click the Start button
         await ClickStartButton();
     }
 
@@ -172,72 +169,65 @@ public class StarCraftService : IDisposable
 
         File.WriteAllLines(bwapiIniPath, lines);
         Console.WriteLine("BWAPI configuration updated successfully");
-        
-        // Write bot configuration file for settings that need to be read by the bot code
-        WriteBotConfig(gamePreferences);
-    }
-    
-    private void WriteBotConfig(GamePreferences gamePreferences)
-    {
-        var botConfigPath = Path.Combine(_starcraftBasePath, "bwapi-data", "AI", "bot-config.txt");
-        try
-        {
-            var config = $"AllowUserControl={gamePreferences.AllowUserControl}";
-            File.WriteAllText(botConfigPath, config);
-            Console.WriteLine($"Bot config written: {config}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error writing bot config: {ex.Message}");
-        }
     }
 
     private void CloseStarCraftWindow()
     {
-        Console.WriteLine("Looking for StarCraft window...");
-        
-        IntPtr starcraftWindow = WindowUtils.FindWindowByTitles("Brood War", "StarCraft", "Broodwar");
-        
-        if (starcraftWindow != IntPtr.Zero)
+        Console.WriteLine("Looking for StarCraft process...");
+
+        try
         {
-            Console.WriteLine("Found StarCraft window, sending close message...");
-            WindowUtils.CloseWindow(starcraftWindow);
+            // Use taskkill command which can force-terminate processes
+            var processInfo = new ProcessStartInfo
+            {
+                FileName = "taskkill",
+                Arguments = "/F /IM StarCraft.exe",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            var process = Process.Start(processInfo);
+            if (process != null)
+            {
+                process.WaitForExit();
+                var output = process.StandardOutput.ReadToEnd();
+                var error = process.StandardError.ReadToEnd();
+                
+                Console.WriteLine($"taskkill output: {output}");
+                if (!string.IsNullOrEmpty(error))
+                {
+                    Console.WriteLine($"taskkill error: {error}");
+                }
+                
+                process.Dispose();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            Console.WriteLine("StarCraft window not found");
+            Console.WriteLine($"Error using taskkill: {ex.Message}");
         }
     }
 
     public void StopChaosLauncher()
     {
         Console.WriteLine("Stopping chaoslauncherprocess");
-        try
+        if (_chaosLauncherProcess != null && !_chaosLauncherProcess.HasExited)
         {
-            if (_chaosLauncherProcess != null && !_chaosLauncherProcess.HasExited)
-            {
 
-                _chaosLauncherProcess.Kill();
-                _chaosLauncherProcess.WaitForExit();
-                Console.WriteLine("Chaoslauncher process stopped.");
-            }
+            _chaosLauncherProcess.Kill();
+            _chaosLauncherProcess.WaitForExit();
+            _chaosLauncherProcess?.Dispose();
+            _chaosLauncherProcess = null;
+            Console.WriteLine("Chaoslauncher process stopped.");
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error stopping chaoslauncher process: {ex.Message}");
-        }
-        Console.WriteLine("Shutdown complete");
     }
 
-    public void Dispose()
+    public void StopAndReset()
     {
-        if (!_disposed)
-        {
-            Console.WriteLine("Disposing StarCraftService...");
-            CloseStarCraftWindow();
-            StopChaosLauncher();
-            _chaosLauncherProcess?.Dispose();
-            _disposed = true;
-        }
+        Console.WriteLine("Disposing StarCraftService...");
+        CloseStarCraftWindow();
+        StopChaosLauncher();
     }
 }
