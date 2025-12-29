@@ -1,5 +1,4 @@
 using BWAPI.NET;
-using MyBot;
 
 namespace MyBotWeb.Services;
 
@@ -7,17 +6,13 @@ public class BotService : DefaultBWListener
 {
     private BWClient? _bwClient;
     public Game? Game { get; private set; }
-    private bool _isProcessingFrame = false;
-    private MyBot.MyBot _myBot = new MyBot.MyBot();
+    public MyBot Bot { get; private set; } = new MyBot();
     public bool IsInGame { get; private set; }
     public string GameStatus { get; private set; } = "Not Connected";
-
     public event Action? GameStartedOrEnded;
-    private bool shouldLeave = false;
-
     public void StartBot()
     {
-        _myBot = new MyBot.MyBot();
+        Bot = new MyBot();
         _bwClient = new BWClient(this);
         GameStatus = "Connected - Waiting for Game";
         _bwClient.StartGame();
@@ -42,7 +37,7 @@ public class BotService : DefaultBWListener
 
         if (Game != null)
         {
-            _myBot.OnStart(Game);
+            Bot.OnStart(Game);
         }
     }
 
@@ -52,7 +47,7 @@ public class BotService : DefaultBWListener
         GameStatus = isWinner ? "Game Over - Victory!" : "Game Over - Defeat";
         IsInGame = false;
 
-        _myBot.OnEnd(isWinner);
+        Bot.OnEnd(isWinner);
 
         GameStartedOrEnded?.Invoke();
     }
@@ -61,91 +56,91 @@ public class BotService : DefaultBWListener
     {
         if (Game == null) return;
 
-        _myBot.OnFrame();
+        Bot.OnFrame();
 
     }
 
     public override void OnUnitComplete(Unit unit)
     {
         // Delegate to MyBot
-        _myBot.OnUnitComplete(unit);
+        Bot.OnUnitComplete(unit);
     }
 
     public override void OnUnitDestroy(Unit unit)
     {
         // Delegate to MyBot
-        _myBot.OnUnitDestroy(unit);
+        Bot.OnUnitDestroy(unit);
     }
 
     public override void OnUnitMorph(Unit unit)
     {
         // Delegate to MyBot
-        _myBot.OnUnitMorph(unit);
+        Bot.OnUnitMorph(unit);
     }
 
     public override void OnSendText(string text)
     {
         // Delegate to MyBot
-        _myBot.OnSendText(text);
+        Bot.OnSendText(text);
     }
 
     public override void OnReceiveText(Player player, string text)
     {
         // Delegate to MyBot
-        _myBot.OnReceiveText(player, text);
+        Bot.OnReceiveText(player, text);
     }
 
     public override void OnPlayerLeft(Player player)
     {
         // Delegate to MyBot
-        _myBot.OnPlayerLeft(player);
+        Bot.OnPlayerLeft(player);
     }
 
     public override void OnNukeDetect(Position target)
     {
         // Delegate to MyBot
-        _myBot.OnNukeDetect(target);
+        Bot.OnNukeDetect(target);
     }
 
     public override void OnUnitEvade(Unit unit)
     {
         // Delegate to MyBot
-        _myBot.OnUnitEvade(unit);
+        Bot.OnUnitEvade(unit);
     }
 
     public override void OnUnitShow(Unit unit)
     {
         // Delegate to MyBot
-        _myBot.OnUnitShow(unit);
+        Bot.OnUnitShow(unit);
     }
 
     public override void OnUnitHide(Unit unit)
     {
         // Delegate to MyBot
-        _myBot.OnUnitHide(unit);
+        Bot.OnUnitHide(unit);
     }
 
     public override void OnUnitCreate(Unit unit)
     {
         // Delegate to MyBot
-        _myBot.OnUnitCreate(unit);
+        Bot.OnUnitCreate(unit);
     }
 
     public override void OnUnitRenegade(Unit unit)
     {
         // Delegate to MyBot
-        _myBot.OnUnitRenegade(unit);
+        Bot.OnUnitRenegade(unit);
     }
 
     public override void OnSaveGame(string gameName)
     {
         // Delegate to MyBot
-        _myBot.OnSaveGame(gameName);
+        Bot.OnSaveGame(gameName);
     }
 
     public override void OnUnitDiscover(Unit unit)
     {
         // Delegate to MyBot
-        _myBot.OnUnitDiscover(unit);
+        Bot.OnUnitDiscover(unit);
     }
 }

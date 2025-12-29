@@ -1,0 +1,152 @@
+@using BWAPI.NET
+@using MyBotWeb.Services
+@inject BotService botService
+@implements IDisposable
+
+<div>Build Queue</div>
+<div class="bg-gray-800 rounded-lg py-2 px-3 mb-3">
+    @foreach (var (unit, index) in botService.Bot.BuildQueue.Select((item, index) => (item, index)))
+    {
+        <div class="flex items-center justify-between py-1">
+            <span>@index: @unit</span>
+            <button @onclick="() => RemoveFromQueue(index)"
+                class="ml-2 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded">
+                Delete
+            </button>
+        </div>
+    }
+</div>
+
+<div class="bg-gray-800 rounded-lg py-2 px-3 mb-3">
+    <div class="mb-2 text-sm font-semibold">Add to Queue</div>
+    <div class="relative">
+        <input 
+            type="text" 
+            @bind="filterText" 
+            @bind:event="oninput"
+            @onfocus="OnInputFocus"
+            @onblur="OnInputBlur"
+            @onkeydown="OnKeyDown"
+            placeholder="Search Units"
+            class="w-full bg-gray-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        
+        @if (isDropdownOpen && filteredUnits.Any())
+        {
+            <div class="absolute z-10 w-full mt-1 bg-gray-700 rounded-lg shadow-lg max-h-200 overflow-y-auto">
+                @foreach (var (unit, index) in filteredUnits.Select((u, i) => (u, i)))
+                {
+                    <div 
+                        @onmousedown="() => SelectUnit(unit)"
+                        @onmouseenter="() => highlightedIndex = index"
+                        class="px-3 py-2 cursor-pointer @(highlightedIndex == index ? "bg-blue-600" : "hover:bg-gray-600")">
+                        @unit.ToString().Replace("Protoss_", "").Replace("_", " ")
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private UnitType? selectedUnit = null;
+    private string filterText = "";
+    private bool isDropdownOpen = false;
+    private int highlightedIndex = 0;
+
+    private List<UnitType> protossUnits =
+    typeof(UnitType).GetFields()
+    .Where(f => f.Name.StartsWith("Protoss_"))
+    .Select(f => (UnitType)f.GetValue(null)!)
+    .ToList();
+
+    private List<UnitType> filteredUnits => string.IsNullOrWhiteSpace(filterText)
+        ? protossUnits
+        : protossUnits.Where(u => u.ToString().Contains(filterText, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private void OnInputFocus()
+    {
+        isDropdownOpen = true;
+        highlightedIndex = 0;
+    }
+
+    private void OnInputBlur()
+    {
+        // Delay to allow click events to fire
+        Task.Delay(200).ContinueWith(_ => InvokeAsync(() =>
+        {
+            isDropdownOpen = false;
+            StateHasChanged();
+        }));
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!isDropdownOpen || !filteredUnits.Any()) return;
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                highlightedIndex = (highlightedIndex + 1) % filteredUnits.Count;
+                StateHasChanged();
+                break;
+            case "ArrowUp":
+                highlightedIndex = (highlightedIndex - 1 + filteredUnits.Count) % filteredUnits.Count;
+                StateHasChanged();
+                break;
+            case "Enter":
+                if (highlightedIndex >= 0 && highlightedIndex < filteredUnits.Count)
+                {
+                    SelectUnit(filteredUnits[highlightedIndex]);
+                }
+                break;
+            case "Escape":
+                isDropdownOpen = false;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    private void SelectUnit(UnitType unit)
+    {
+        botService.Bot.BuildQueue.Add(unit);
+        filterText = "";
+        highlightedIndex = 0;
+        isDropdownOpen = false;
+        StateHasChanged();
+    }
+
+    private void AddToQueue()
+    {
+        if (selectedUnit != null)
+        {
+            botService.Bot.BuildQueue.Add((UnitType)selectedUnit);
+            selectedUnit = null;
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveFromQueue(int index)
+    {
+        if (index >= 0 && index < botService.Bot.BuildQueue.Count)
+        {
+            botService.Bot.BuildQueue.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    private Timer? refreshTimer;
+
+    private void Reload() => InvokeAsync(StateHasChanged);
+    
+    protected override void OnInitialized()
+    {
+        botService.GameStartedOrEnded += Reload;
+        refreshTimer = new Timer(_ => InvokeAsync(StateHasChanged), null, 0, 500);
+    }
+    
+    public void Dispose()
+    {
+        botService.GameStartedOrEnded -= Reload;
+        refreshTimer?.Dispose();
+    }
+}

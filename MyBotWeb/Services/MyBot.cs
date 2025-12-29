@@ -1,12 +1,15 @@
 ﻿using BWAPI.NET;
 
-namespace MyBot;
+namespace MyBotWeb.Services;
 
 public class MyBot
 {
     private Game? _game;
 
     private int targetWorkerCount = 35;
+    private UnitType? pendingBuilding = null;
+    private int? pendingBuildingTotalCount = null;
+    private TilePosition? nextBuildLocation = null;
 
     public List<UnitType> BuildQueue { get; } = new List<UnitType> // start with 9 probes
     {
@@ -41,41 +44,145 @@ public class MyBot
 
     private void HandleBuildOrder(Game game)
     {
+        var nextBuildings = BuildQueue.Where(u => u.IsBuilding());
+        if (nextBuildings.Any())
+        {
+            assignBuildLocationNear(game, nextBuildings.FirstOrDefault(), game.Self().GetStartLocation());
+
+        }
+
+        // Check if we have a pending building and if it has started construction
+        if (pendingBuilding != null)
+        {
+            var buildingCountOfPendingType = game.GetAllUnits()
+                .Count(u => u.GetPlayer() == game.Self() && u.GetUnitType() == pendingBuilding);
+
+            if (buildingCountOfPendingType < pendingBuildingTotalCount)
+            {
+                game.DrawTextScreen(5, 5, $"Waiting for construction of {pendingBuilding} to start...");
+                return;
+            }
+            else
+            {
+                pendingBuilding = null;
+                pendingBuildingTotalCount = null;
+                BuildQueue.RemoveAt(0);
+            }
+        }
+        if (!BuildQueue.Any())
+        {
+            return;
+        }
+
+
         var nextUnit = BuildQueue.FirstOrDefault();
-        game.DrawTextScreen(100, 100, $"Next Unit: {nextUnit}");
+        game.DrawTextScreen(5, 5, $"Next Unit: {nextUnit}");
         var nextUnitMineralCost = nextUnit.MineralPrice();
         var currentMinerals = game.Self().Minerals();
         if (nextUnitMineralCost > currentMinerals)
         {
-            game.DrawTextScreen(100, 120, $"Not enough minerals for {nextUnit} (Have: {currentMinerals}, Need: {nextUnitMineralCost})");
+            game.DrawTextScreen(5, 20, $"{nextUnit} {currentMinerals}/{nextUnitMineralCost} minerals");
             return;
         }
-        if (nextUnit.IsBuilding())
-        {
-            var miningWorkers = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsWorker() && u.IsGatheringMinerals());
-            var workerToBuild = miningWorkers.FirstOrDefault();
-            if (workerToBuild == null)
-            {
-                game.DrawTextScreen(100, 120, $"No available worker to build {nextUnit}");
-                return;
-            }
-            workerToBuild.Build(nextUnit);
-        }
-        else
-        {
-            var idleBuldings = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.IsIdle());
-            var (typeToBuild, typeToBuildId) = nextUnit.WhatBuilds();
 
 
-            var builder = idleBuldings.FirstOrDefault(b => b.GetUnitType() == typeToBuild);
-            if (builder == null)
-            {
-                game.DrawTextScreen(100, 120, $"No available ({typeToBuild}, {typeToBuildId}) for {nextUnit}");
-                return;
-            }
-            builder.Train(nextUnit);
+        var buildCommand = nextUnit.IsBuilding() switch
+        {
+            _ when nextUnit.IsBuilding() => getBuildBuildingCommand(game, nextUnit),
+            _ => getUnitTrainCommand(game, nextUnit),
+        };
+
+        if (buildCommand == null)
+        {
+            return;
         }
-        BuildQueue.RemoveAt(0);
+
+        buildCommand();
+    }
+
+    private Func<bool>? getBuildBuildingCommand(Game game, UnitType nextBuilding)
+    {
+        var miningWorkers = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self()
+            && u.GetUnitType().IsWorker());
+        var workerToBuild = miningWorkers.FirstOrDefault();
+        if (workerToBuild == null)
+        {
+            game.DrawTextScreen(5, 120, $"No available worker to build {nextBuilding}");
+            return null;
+        }
+
+        assignBuildLocationNear(game, nextBuilding, game.Self().GetStartLocation());
+        if (nextBuildLocation == null)
+        {
+            game.DrawTextScreen(5, 120, $"No valid build location found for {nextBuilding}");
+            return null;
+        }
+        return () =>
+        {
+            var result = workerToBuild.Build(nextBuilding, (TilePosition)nextBuildLocation);
+            if (!result)
+            {
+                Console.WriteLine($"Failed to issue build command for {nextBuilding} at {nextBuildLocation}");
+                game.DrawTextScreen(5, 120, $"Failed to issue build command for {nextBuilding} at {nextBuildLocation}");
+            }
+            else
+            {
+                pendingBuilding = nextBuilding;
+                pendingBuildingTotalCount = game.GetAllUnits().Count(u => u.GetPlayer() == game.Self() && u.GetUnitType() == nextBuilding) + 1;
+                nextBuildLocation = null;
+            }
+            return result;
+        };
+    }
+
+    private void assignBuildLocationNear(Game game, UnitType buildingType, TilePosition nearPosition)
+    {
+        if (nextBuildLocation != null && !game.CanBuildHere((TilePosition)nextBuildLocation, buildingType)) // something happened since assignment
+        {
+            nextBuildLocation = null;
+        }
+        var possibleLocations = BuildingLocationUtils.MarkAndGetPossibleBuildLocations(game, buildingType, nearPosition);
+        if (possibleLocations.Any() && nextBuildLocation == null)
+        {
+            nextBuildLocation = possibleLocations[possibleLocations.Count / 2];
+        }
+        if (nextBuildLocation != null)
+        {
+            Position pixelPos = new Position(nextBuildLocation.Value.X * 32, nextBuildLocation.Value.Y * 32);
+            game.DrawBoxMap(
+                pixelPos.X,
+                pixelPos.Y,
+                pixelPos.X + buildingType.TileWidth() * 32,
+                pixelPos.Y + buildingType.TileHeight() * 32,
+                Color.Green
+            );
+            return; // already assigned
+        }
+    }
+
+    private Func<bool>? getUnitTrainCommand(Game game, UnitType nextUnit)
+    {
+        var idleBuldings = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.IsIdle());
+        var (typeToBuild, typeToBuildId) = nextUnit.WhatBuilds();
+        var builder = idleBuldings.FirstOrDefault(b => b.GetUnitType() == typeToBuild);
+        if (builder == null)
+        {
+            game.DrawTextScreen(5, 120, $"No available ({typeToBuild}, {typeToBuildId}) for {nextUnit}");
+            return null;
+        }
+        return () =>
+        {
+            var result = builder.Train(nextUnit);
+            if (result)
+            {
+                BuildQueue.RemoveAt(0);
+            }
+            else
+            {
+                game.DrawTextScreen(5, 120, $"Failed to train {nextUnit} from {builder.GetUnitType()}");
+            }
+            return result;
+        };
     }
 
     private void BuildWorkers(Game game)
@@ -83,12 +190,12 @@ public class MyBot
         int workerCount = game.GetAllUnits().Count(u => u.GetUnitType().IsWorker() && u.GetPlayer() == game.Self());
         bool hasEnoughMineralsForAnotherWorker = game.Self().Minerals() >= 50;
         var availableTownHalls = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsResourceDepot()).Where(th => th.IsIdle());
-        game.DrawTextScreen(100, 100, $"Workers: {workerCount} / {targetWorkerCount}, {hasEnoughMineralsForAnotherWorker}");
+        game.DrawTextScreen(5, 5, $"Workers: {workerCount} / {targetWorkerCount}, {hasEnoughMineralsForAnotherWorker}");
 
         if (workerCount < targetWorkerCount && hasEnoughMineralsForAnotherWorker && availableTownHalls.Any())
         {
             var selectedTownHall = availableTownHalls.First();
-            game.DrawTextScreen(100, 120, $"Selected Town Hall: {selectedTownHall}");
+            game.DrawTextScreen(5, 120, $"Selected Town Hall: {selectedTownHall}");
             selectedTownHall?.Train(UnitType.Protoss_Probe);
         }
     }

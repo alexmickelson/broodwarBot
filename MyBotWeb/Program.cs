@@ -16,6 +16,8 @@ builder.Services.AddHostedService<CssWatcherService>();
 
 var app = builder.Build();
 
+var starcraftService = app.Services.GetRequiredService<StarCraftService>();
+
 app.UseStaticFiles();
 app.UseAntiforgery();
 
@@ -24,3 +26,5 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+starcraftService.StopAndReset();

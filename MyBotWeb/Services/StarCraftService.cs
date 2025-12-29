@@ -51,7 +51,7 @@ public class StarCraftService
 
     private async Task ClickStartButton()
     {
-        await Task.Delay(1000);
+        await Task.Delay(100);
 
         IntPtr startButtonHandle = IntPtr.Zero;
         IntPtr chaosWindow = WindowUtils.FindWindow(null, "Chaoslauncher");

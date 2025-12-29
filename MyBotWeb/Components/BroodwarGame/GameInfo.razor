@@ -2,141 +2,89 @@
 @using MyBotWeb.Services
 @inject BotService BotService
 @implements IDisposable
-
-<div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
-    <h2 class="text-white">Game Status</h2>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
-        <div class="bg-gray-700 rounded-lg p-4">
-            <div>
-                <strong class="text-gray-300">In Game:</strong> 
-                <span class="@(BotService.IsInGame ? "text-green-400" : "text-gray-500") font-bold">
-                    @(BotService.IsInGame ? "Yes" : "No")
-                </span>
-            </div>
-        </div>
-        <div class="bg-gray-700 rounded-lg p-4">
-            <div>
-                <strong class="text-gray-300">Status:</strong> 
-                <span class="text-white">@BotService.GameStatus</span>
-            </div>
-        </div>
-        <div class="bg-gray-700 rounded-lg p-4">
-            <div>
-                <strong class="text-gray-300">Frame:</strong> 
-                <span class="text-white">@GetFrameCount()</span>
-            </div>
-        </div>
+<div class="bg-gray-800 rounded-lg flex flex-row gap-4 p-3 mb-3">
+    <div class="flex-1 bg-gray-700 rounded-lg p-1 flex flex-row justify-center">
+        <span class="text-white">@GetMinerals()</span>
+        <span class="text-gray-300 ps-2">minerals</span>
+    </div>
+    <div class="flex-1 bg-gray-700 rounded-lg p-1 flex flex-row justify-center">
+        <span class="text-white">@GetGas()</span>
+        <span class="text-gray-300 ps-2">gas</span>
+    </div>
+    <div class="flex-1 bg-gray-700 rounded-lg p-1 flex flex-row justify-center">
+        <span class="text-white">@GetSupplyUsed() / @GetSupplyTotal()</span>
+        <span class="text-gray-300 ps-2">supply</span>
     </div>
 </div>
 
-<div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
-    <h2 class="text-white">Resources</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-        <div class="bg-gray-700 rounded-lg p-4">
-            <div>
-                <strong class="text-gray-300">Minerals:</strong> 
-                <span class="text-white">@GetMinerals()</span>
+<div class=" mb-4">
+    <h2 class="">Units</h2>
+    @foreach (var unitGroup in GetUnitsByType())
+    {
+        <div class="mt-2 p-2 bg-gray-800 rounded-lg">
+            <div class="text-gray-300">@unitGroup.Key.ToString()s</div>
+            <div class="flex flex-col ps-3">
+                @foreach (var unit in unitGroup.Value)
+                {
+                    <div>@unit.GetHitPoints()</div>
+                    <div class="text-gray-400 ps-3 text-sm">
+                        <div>
+                            @unit.GetOrder().ToString()
+                        </div>
+                        <div>
+                            @if (unit.GetTarget() != null)
+                            {
+                                @unit.GetTarget().GetUnitType().ToString()
+                            }
+                        </div>
+                    </div>
+                }
             </div>
         </div>
-        <div class="bg-gray-700 rounded-lg p-4">
-            <div>
-                <strong class="text-gray-300">Gas:</strong> 
-                <span class="text-white">@GetGas()</span>
+    }
+</div>
+
+<div class="">
+    <h2 class="">Buildings</h2>
+        <div class="mt-2 p-2 bg-gray-800 rounded-lg">
+        @foreach (var buildingGroup in GetBuildingsByType())
+        {
+            <div class="text-gray-300">@buildingGroup.Key.ToString()s</div>
+            <div class="flex flex-col ps-3">
+                @foreach (var building in buildingGroup.Value)
+                {
+                    <div class="text-gray-400 ps-3 text-sm">
+                        @if (building.IsTraining())
+                        {
+                            <div class="flex flex-row gap-2">
+                                <div>
+                                    Training: 
+                                </div>
+                                @foreach (var queued in building.GetTrainingQueue())
+                                {
+                                    <div>
+                                        @queued 
+                                    </div>
+                                }
+                            </div>
+                        }
+                        @if (building.IsResearching())
+                        {
+                            <div>
+                                Researching: @building.GetTech()
+                            </div>
+                        }
+                        @if (building.IsUpgrading())
+                        {
+                            <div>
+                                Upgrading: @building.GetUpgrade()
+                            </div>
+                        }
+                    </div>
+                }
             </div>
-        </div>
-        <div class="bg-gray-700 rounded-lg p-4">
-            <div>
-                <strong class="text-gray-300">Supply:</strong> 
-                <span class="text-white">@GetSupplyUsed() / @GetSupplyTotal()</span>
-            </div>
-        </div>
+        }
     </div>
-</div>
-
-<div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
-    <h2 class="text-white">Units (@GetUnits().Count())</h2>
-    @if (GetUnits().Any())
-    {
-        <div class="overflow-x-auto mt-4">
-            <table class="min-w-full divide-y divide-gray-700">
-                <thead class="bg-gray-900">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Type</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Health</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Completed</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Position</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-gray-800 divide-y divide-gray-700">
-                    @foreach (var unit in GetUnits())
-                    {
-                        <tr class="hover:bg-gray-700">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">@unit.GetUnitType().ToString()</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <div class="w-full bg-gray-700 rounded-full h-2.5">
-                                    <div class="bg-green-500 h-2.5 rounded-full" 
-                                         style="width: @((unit.GetHitPoints() * 100.0 / unit.GetUnitType().MaxHitPoints()))%">
-                                    </div>
-                                </div>
-                                <div class="text-xs text-gray-400 mt-1">
-                                    @unit.GetHitPoints() / @unit.GetUnitType().MaxHitPoints()
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">@(unit.IsCompleted() ? "✓" : "Building...")</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">(@unit.GetPosition().X, @unit.GetPosition().Y)</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-    else
-    {
-        <p class="text-gray-500 italic mt-4">No units available</p>
-    }
-</div>
-
-<div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
-    <h2 class="text-white">Buildings (@GetBuildings().Count())</h2>
-    @if (GetBuildings().Any())
-    {
-        <div class="overflow-x-auto mt-4">
-            <table class="min-w-full divide-y divide-gray-700">
-                <thead class="bg-gray-900">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Type</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Health</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Completed</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Position</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-gray-800 divide-y divide-gray-700">
-                    @foreach (var building in GetBuildings())
-                    {
-                        <tr class="hover:bg-gray-700">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">@building.GetUnitType().ToString()</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <div class="w-full bg-gray-700 rounded-full h-2.5">
-                                    <div class="bg-green-500 h-2.5 rounded-full" 
-                                         style="width: @((building.GetHitPoints() * 100.0 / building.GetUnitType().MaxHitPoints()))%">
-                                    </div>
-                                </div>
-                                <div class="text-xs text-gray-400 mt-1">
-                                    @building.GetHitPoints() / @building.GetUnitType().MaxHitPoints()
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">@(building.IsCompleted() ? "✓" : "Building...")</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">(@building.GetPosition().X, @building.GetPosition().Y)</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    }
-    else
-    {
-        <p class="text-gray-500 italic mt-4">No buildings available</p>
-    }
 </div>
 
 @code {
@@ -145,7 +93,7 @@
     protected override void OnInitialized()
     {
         // Refresh the UI every 500ms
-        timer = new (_ =>
+        timer = new(_ =>
         {
             InvokeAsync(StateHasChanged);
         }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
@@ -165,15 +113,29 @@
     private IEnumerable<BWAPI.NET.Unit> GetUnits()
     {
         if (BotService.Game == null) return Enumerable.Empty<BWAPI.NET.Unit>();
-        
+
         var allUnits = BotService.Game.Self()?.GetUnits() ?? Enumerable.Empty<BWAPI.NET.Unit>();
         return allUnits.Where(u => u.Exists() && !u.GetUnitType().IsBuilding());
+    }
+
+    private Dictionary<UnitType, Unit[]> GetUnitsByType()
+    {
+        var units = GetUnits();
+        return units.GroupBy(u => u.GetUnitType())
+        .ToDictionary(g => g.Key, g => g.ToArray());
+    }
+
+    private Dictionary<UnitType, Unit[]> GetBuildingsByType()
+    {
+        var buildings = GetBuildings();
+        return buildings.GroupBy(u => u.GetUnitType())
+        .ToDictionary(g => g.Key, g => g.ToArray());
     }
 
     private IEnumerable<BWAPI.NET.Unit> GetBuildings()
     {
         if (BotService.Game == null) return Enumerable.Empty<BWAPI.NET.Unit>();
-        
+
         var allUnits = BotService.Game.Self()?.GetUnits() ?? Enumerable.Empty<BWAPI.NET.Unit>();
         return allUnits.Where(u => u.Exists() && u.GetUnitType().IsBuilding());
     }
