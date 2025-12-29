@@ -36,8 +36,7 @@ public static class BuildingLocationUtils
 
     private static void TestAndMarkLocation(Game game, UnitType buildingType, TilePosition testPosition, Unit nexus, List<Unit> resources, List<Unit> existingBuildings, List<TilePosition> possibleLocations)
     {
-        var isGoodLocation = game.CanBuildHere(testPosition, buildingType)
-            && game.IsVisible(testPosition)
+        var isGoodLocation = game.CanBuildHere(testPosition, buildingType, builder: null, checkExplored: true)
             && !IsPositionBetweenNexusAndResources(testPosition, nexus, buildingType, resources)
             && IsAwayFromBuildingsAndWalls(game, testPosition, buildingType, existingBuildings);
 
@@ -61,17 +60,19 @@ public static class BuildingLocationUtils
         {
             return true;
         }
-        int minBuildingPosition = buildingType switch
+
+        var existingPylonCount = existingBuildings.Count(b => b.GetUnitType() == UnitType.Protoss_Pylon);
+        int minBuildingDistance = buildingType switch
         {
-            UnitType.Protoss_Pylon => 5 * 32, // 5 tiles in pixels
-            _ => 2 * 32,
+            UnitType.Protoss_Pylon => existingPylonCount < 4 ?  5 * 32 : 2 * 32,
+            _ => 1 * 32,
         };
         Position buildPixelPos = new Position(buildPos.X * 32, buildPos.Y * 32);
         
         // Check distance from other buildings
         foreach (var building in existingBuildings)
         {
-            if (building.GetDistance(buildPixelPos) < minBuildingPosition)
+            if (building.GetDistance(buildPixelPos) < minBuildingDistance)
             {
                 return false;
             }

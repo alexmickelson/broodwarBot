@@ -8,11 +8,12 @@
     @if (!_isLaunching && !_isReady)
     {
         <h2 class="text-2xl font-bold mb-6">Auto-Launch Game</h2>
-        
+
         <div class="space-y-6">
             <div class="mb-3">
                 <label class="block mb-2">Map</label>
-                <select class="block w-full px-3 py-2 border @borderStyle rounded" @bind="_mapPath" @bind:after="UpdateMaxPlayers">
+                <select class="block w-full px-3 py-2 border @borderStyle rounded" @bind="_mapPath"
+                    @bind:after="UpdateMaxPlayers">
                     @foreach (var map in _availableMaps)
                     {
                         <option value="@map">@map</option>
@@ -24,9 +25,14 @@
                 <div class=" mb-3">Player Slots (@_maxPlayers players)</div>
                 <div class="space-y-2">
                     <div class="flex ">
-                        <span class="flex items-center px-4 py-3 border @borderStyle border-r-0 rounded-l-lg font-medium text-sm ">Player 1</span>
-                        <span  class="flex items-center px-3 py-3 border @borderStyle font-medium text-sm" >Server (You)</span>
-                        <select class="unstyled bg-gray-900 ps-3 flex-1 border @borderStyle border-l-0 rounded-r-lg cursor-pointer hover:bg-gray-800 hover:border-gray-200" @bind="_playerRace">
+                        <span
+                            class="flex items-center px-4 py-3 border @borderStyle border-r-0 rounded-l-lg font-medium text-sm ">Player
+                            1</span>
+                        <span class="flex items-center px-3 py-3 border @borderStyle font-medium text-sm">Server
+                            (You)</span>
+                        <select
+                            class="unstyled bg-gray-900 ps-3 flex-1 border @borderStyle border-l-0 rounded-r-lg cursor-pointer hover:bg-gray-800 hover:border-gray-200"
+                            @bind="_playerRace">
                             <option value="Terran">Terran</option>
                             <option value="Protoss">Protoss</option>
                             <option value="Zerg">Zerg</option>
@@ -36,9 +42,13 @@
                     @for (int i = 1; i < _maxPlayers; i++)
                     {
                         var index = i;
-                        <div class="flex items-stretch">
-                            <span class="flex items-center px-4 py-2.5 bg-gray-500/5 border @borderStyle border-r-0 rounded-l-lg font-medium text-sm min-w-25">Player @(i + 1)</span>
-                            <select class="flex-1 px-3 py-2.5 border @borderStyle rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" @bind="_playerSlots[index]">
+                        <div class="flex">
+                            <span
+                                class="flex items-center px-4 py-3 border @borderStyle border-r-0 rounded-l-lg font-medium text-sm">Player
+                                @(i + 1)</span>
+                            <select
+                                class="unstyled bg-gray-900 px-3 py-3 flex-1 border @borderStyle rounded-r-lg cursor-pointer hover:bg-gray-800 hover:border-gray-200"
+                                @bind="_playerSlots[index]">
                                 <option value="None">None</option>
                                 <option value="Open">Open (Other Player)</option>
                                 <option value="Computer - Terran">Computer - Terran</option>
@@ -59,19 +69,30 @@
                     </label>
                 </div>
             </div>
+
         </div>
 
-        <div class="text-center pt-4">
-            <button class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150" @onclick="StartLaunch">
-                <i class="bi bi-play-fill"></i> Launch StarCraft Bot
+        <div class="text-center pt-4 space-y-3">
+            <button
+                class="px-8 py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150"
+                @onclick="StartLaunch">
+                Auto-Launch Game and Map
             </button>
+            <div>
+                <button
+                    class="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150"
+                    @onclick="ManualLaunch">
+                    Manual Launch (Join Game Yourself)
+                </button>
+            </div>
         </div>
     }
     else if (_isLaunching)
     {
         <div class="text-center py-8">
             <h2 class="text-2xl font-bold mb-6">Launching...</h2>
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500/20 border-t-blue-500 mb-6" role="status">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500/20 border-t-blue-500 mb-6"
+                role="status">
                 <span class="sr-only">Loading...</span>
             </div>
             @if (_waitingForUser)
@@ -92,7 +113,7 @@
 </div>
 
 @code {
-    private string borderStyle = "border-gray-500";
+    private string borderStyle = "border-gray-700";
     private bool _isLaunching = false;
     private bool _isReady = false;
     private bool _waitingForUser = false;
@@ -102,22 +123,22 @@
     private bool _allowUserControl = true;
     private List<string> _availableMaps = new();
     private int _maxPlayers = 2;
-    private string[] _playerSlots = new[] 
-    { 
-        "Server", // Player 1 (always the server)
-        "Computer - Random", 
-        "None", 
-        "None", 
-        "None", 
-        "None", 
-        "None", 
-        "None" 
-    };
+    private string[] _playerSlots = new[]
+    {
+"Server", // Player 1 (always the server)
+"Computer - Random",
+"None",
+"None",
+"None",
+"None",
+"None",
+"None"
+};
 
     protected override void OnInitialized()
     {
         _availableMaps = StarCraftService.GetMapOptions();
-        
+
         // Load saved preferences
         var savedPreferences = PreferencesService.LoadPreferences();
         if (savedPreferences != null)
@@ -130,13 +151,13 @@
                 _playerSlots = savedPreferences.PlayerSlots;
             }
         }
-        
+
         // Validate map exists in available maps
         if (_availableMaps.Count > 0 && !_availableMaps.Contains(_mapPath))
         {
             _mapPath = _availableMaps[0];
         }
-        
+
         UpdateMaxPlayers();
     }
 
@@ -161,21 +182,23 @@
         _maxPlayers = GetMaxPlayersFromMap(_mapPath);
     }
 
-    private async Task StartLaunch()
+    private GamePreferences gamePreferences
     {
-        // Count human players (excluding server) and computer players
-        int humanPlayerSlots = _playerSlots.Skip(1).Count(s => s == "Open");
-        var computerPlayers = _playerSlots.Skip(1)
+        get
+        {
+            // Count human players (excluding server) and computer players
+            int humanPlayerSlots = _playerSlots.Skip(1).Count(s => s == "Open");
+            var computerPlayers = _playerSlots.Skip(1)
             .Select((slot, index) => (slot, index))
             .Where(x => x.slot.StartsWith("Computer - "))
             .ToList();
-        
-        int computerPlayerSlots = computerPlayers.Count;
-        string[] computerRaces = computerPlayers
+
+            int computerPlayerSlots = computerPlayers.Count;
+            string[] computerRaces = computerPlayers
             .Select(x => x.slot.Replace("Computer - ", ""))
             .ToArray();
 
-        var gamePreferences = new GamePreferences(
+            return new GamePreferences(
             Map: _mapPath,
             PlayerRace: _playerRace,
             AllowUserControl: _allowUserControl,
@@ -183,20 +206,39 @@
             ComputerPlayerSlots: computerPlayerSlots,
             ComputerRaces: computerRaces,
             PlayerSlots: _playerSlots
-        );
+            );
+        }
+    }
 
+    private async Task StartLaunch()
+    {
         // Save preferences for next time
         PreferencesService.SavePreferences(gamePreferences);
 
         _isLaunching = true;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
         var _ = Task.Run(() => BotService.StartBot());
 
         await Task.Delay(500);
 
         await StarCraftService.StartStarCraftAsync(gamePreferences);
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ManualLaunch()
+    {
+        _isLaunching = true;
+        await InvokeAsync(StateHasChanged);
+        var _ = Task.Run(() => BotService.StartBot());
+
+        await Task.Delay(500);
+
+        await StarCraftService.StartStarCraftAsync(gamePreferences with
+        {
+
+            AutoMenu = "OFF"
+        });
+        await InvokeAsync(StateHasChanged);
     }
 
 }
-

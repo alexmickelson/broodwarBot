@@ -7,12 +7,10 @@ public record GamePreferences(
     int HumanPlayerSlots = 0,
     int ComputerPlayerSlots = 1,
     string[] ComputerRaces = null!,
-    string[] PlayerSlots = null!
+    string[] PlayerSlots = null!,
+    string AutoMenu = "SINGLE_PLAYER"
 )
 {
-    public GamePreferences() : this("maps/(2)Boxer.scm", "Protoss", false, 0, 1, new[] { "Protoss" }, new[] { "Server", "Computer - Random", "None", "None", "None", "None", "None", "None" })
-    {
-    }
 }
 
 public enum Race

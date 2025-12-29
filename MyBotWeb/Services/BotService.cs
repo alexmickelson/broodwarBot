@@ -9,7 +9,9 @@ public class BotService : DefaultBWListener
     public MyBot Bot { get; private set; } = new MyBot();
     public bool IsInGame { get; private set; }
     public string GameStatus { get; private set; } = "Not Connected";
+    public int? GameSpeedToSet { get; set; } = null;
     public event Action? GameStartedOrEnded;
+    public event Action? GameEnded;
     public void StartBot()
     {
         Bot = new MyBot();
@@ -22,6 +24,7 @@ public class BotService : DefaultBWListener
     {
         _bwClient = null;
         Game = null;
+        Bot = new MyBot();
         IsInGame = false;
         GameStatus = "Not Connected";
         GameStartedOrEnded?.Invoke();
@@ -48,16 +51,20 @@ public class BotService : DefaultBWListener
         IsInGame = false;
 
         Bot.OnEnd(isWinner);
-
         GameStartedOrEnded?.Invoke();
+        GameEnded?.Invoke();
+        ResetBot();
     }
 
     public override void OnFrame()
     {
         if (Game == null) return;
-
+        if(GameSpeedToSet != null)
+        {
+            Game.SetLocalSpeed(GameSpeedToSet.Value);
+            GameSpeedToSet = null;
+        }
         Bot.OnFrame();
-
     }
 
     public override void OnUnitComplete(Unit unit)

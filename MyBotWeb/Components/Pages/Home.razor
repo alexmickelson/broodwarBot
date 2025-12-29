@@ -6,7 +6,6 @@
 
 <PageTitle>StarCraft Bot Dashboard</PageTitle>
 <div class="flex flex-row justify-between align-center">
-    <h1 class="">StarCraft Bot Dashboard</h1>
     @if (BotService.IsInGame)
     {
         <div class="my-auto">
@@ -21,6 +20,7 @@
 }
 else
 {
+    <GameSpeedControl />
     <BuildQueue />
     <GameInfo />
 }

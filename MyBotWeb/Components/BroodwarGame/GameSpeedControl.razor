@@ -1,0 +1,42 @@
+@inject BotService botService
+
+<div class="pt-2">
+    <label class="block mb-2 text-sm">Game Speed (ms per frame): @(_gameSpeed == -1 ? "Default" : _gameSpeed == 0 ? "Fastest" : _gameSpeed == 42 ? "Normal (Standard)" : _gameSpeed.ToString())</label>
+    <input type="range" min="-1" max="42" step="1" class="w-full" @bind="_gameSpeed" @bind:event="oninput" @bind:after="UpdateGameSpeed" />
+    <div class="flex justify-between text-xs text-gray-400 mt-1">
+        <button type="button" class="hover:text-blue-400 cursor-pointer" @onclick="() => SetSpeed(-1)">-1 (Default)</button>
+        <button type="button" class="hover:text-blue-400 cursor-pointer" @onclick="() => SetSpeed(0)">0 (As fast as you can run)</button>
+        <button type="button" class="hover:text-blue-400 cursor-pointer" @onclick="() => SetSpeed(1)">1 (Fast, but stable)</button>
+        <button type="button" class="hover:text-blue-400 cursor-pointer" @onclick="() => SetSpeed(42)">42 (Normal)</button>
+    </div>
+</div>
+
+@code {
+    private int _gameSpeed = -1;
+
+    protected override void OnInitialized()
+    {
+        botService.GameStartedOrEnded += Reload;
+    }
+
+    private void SetSpeed(int speed)
+    {
+        _gameSpeed = speed;
+        UpdateGameSpeed();
+    }
+
+    private void UpdateGameSpeed()
+    {
+        if (botService.Game != null)
+        {
+            botService.GameSpeedToSet = _gameSpeed;
+        }
+    }
+
+    public void Dispose()
+    {
+        botService.GameStartedOrEnded -= Reload;
+    }
+
+    private void Reload() => InvokeAsync(StateHasChanged);
+}
