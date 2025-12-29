@@ -15,7 +15,7 @@ public static class BuildingLocationUtils
         var resources = game.GetMinerals().Concat(game.GetGeysers()).ToList();
         var existingBuildings = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsBuilding()).ToList();
 
-        int maxSearchRadius = 50; // Limit the search radius for performance
+        int maxSearchRadius = 20; // Limit the search radius for performance
         for (int dx = -maxSearchRadius; dx <= maxSearchRadius; dx++)
         {
             for (int dy = -maxSearchRadius; dy <= maxSearchRadius; dy++)
@@ -37,6 +37,7 @@ public static class BuildingLocationUtils
     private static void TestAndMarkLocation(Game game, UnitType buildingType, TilePosition testPosition, Unit nexus, List<Unit> resources, List<Unit> existingBuildings, List<TilePosition> possibleLocations)
     {
         var isGoodLocation = game.CanBuildHere(testPosition, buildingType)
+            && game.IsVisible(testPosition)
             && !IsPositionBetweenNexusAndResources(testPosition, nexus, buildingType, resources)
             && IsAwayFromBuildingsAndWalls(game, testPosition, buildingType, existingBuildings);
 

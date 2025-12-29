@@ -2,6 +2,13 @@
 
 namespace MyBotWeb.Services;
 
+
+public enum WorkerAssignment
+{
+    Minerals,
+    Gas,
+    Building
+}
 public class MyBot
 {
     private Game? _game;
@@ -10,6 +17,7 @@ public class MyBot
     private UnitType? pendingBuilding = null;
     private int? pendingBuildingTotalCount = null;
     private TilePosition? nextBuildLocation = null;
+    public Dictionary<int, (WorkerAssignment Assignment, int? TargetId)> WorkerAssignments = new Dictionary<int, (WorkerAssignment, int?)>();
 
     public List<UnitType> BuildQueue { get; } = new List<UnitType> // start with 9 probes
     {
@@ -39,7 +47,7 @@ public class MyBot
         if (_game == null) return;
         // BuildWorkers(_game);
         HandleBuildOrder(_game);
-        MineWorkers(_game);
+        AssignWorkers(_game);
     }
 
     private void HandleBuildOrder(Game game)
@@ -127,6 +135,7 @@ public class MyBot
             }
             else
             {
+                WorkerAssignments[workerToBuild.GetID()] = (WorkerAssignment.Building, null);
                 pendingBuilding = nextBuilding;
                 pendingBuildingTotalCount = game.GetAllUnits().Count(u => u.GetPlayer() == game.Self() && u.GetUnitType() == nextBuilding) + 1;
                 nextBuildLocation = null;
@@ -156,7 +165,6 @@ public class MyBot
                 pixelPos.Y + buildingType.TileHeight() * 32,
                 Color.Green
             );
-            return; // already assigned
         }
     }
 
@@ -184,138 +192,138 @@ public class MyBot
             return result;
         };
     }
-
-    private void BuildWorkers(Game game)
+    private void AssignWorkers(Game game)
     {
-        int workerCount = game.GetAllUnits().Count(u => u.GetUnitType().IsWorker() && u.GetPlayer() == game.Self());
-        bool hasEnoughMineralsForAnotherWorker = game.Self().Minerals() >= 50;
-        var availableTownHalls = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsResourceDepot()).Where(th => th.IsIdle());
-        game.DrawTextScreen(5, 5, $"Workers: {workerCount} / {targetWorkerCount}, {hasEnoughMineralsForAnotherWorker}");
+        var workers = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsWorker()).ToList();
 
-        if (workerCount < targetWorkerCount && hasEnoughMineralsForAnotherWorker && availableTownHalls.Any())
-        {
-            var selectedTownHall = availableTownHalls.First();
-            game.DrawTextScreen(5, 120, $"Selected Town Hall: {selectedTownHall}");
-            selectedTownHall?.Train(UnitType.Protoss_Probe);
-        }
-    }
+        RemoveDeadWorkersFromAssignments(workers);
 
-    private void MineWorkers(Game game)
-    {
-        var workers = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsWorker());
-        foreach (var unit in workers)
+        // Assign workers to assimilators that need them
+        var assimilators = game.GetAllUnits()
+            .Where(u => u.GetPlayer() == game.Self() && 
+                   u.GetUnitType() == UnitType.Protoss_Assimilator && 
+                   u.IsCompleted())
+            .ToList();
+
+        foreach (var assimilator in assimilators)
         {
-            if (unit.IsIdle())
+            var workersOnThisGas = WorkerAssignments.Values
+                .Count(a => a.Assignment == WorkerAssignment.Gas && a.TargetId == assimilator.GetID());
+
+            if (workersOnThisGas < 3)
             {
-                Unit? closestMineral = null;
-                int closestDistance = int.MaxValue;
+                var neededWorkers = 3 - workersOnThisGas;
+                var mineralWorkers = workers
+                    .Where(w => WorkerAssignments.TryGetValue(w.GetID(), out var assignment) && 
+                           assignment.Assignment == WorkerAssignment.Minerals)
+                    .OrderBy(w => w.GetPosition().GetDistance(assimilator.GetPosition()))
+                    .Take(neededWorkers)
+                    .ToList();
 
-                foreach (Unit mineral in game.GetMinerals())
+                foreach (var worker in mineralWorkers)
                 {
-                    int distance = unit.GetDistance(mineral);
-                    if (distance < closestDistance)
-                    {
-                        closestMineral = mineral;
-                        closestDistance = distance;
-                    }
-                }
-
-                if (closestMineral != null)
-                {
-                    unit.Gather(closestMineral);
+                    worker.Gather(assimilator);
+                    WorkerAssignments[worker.GetID()] = (WorkerAssignment.Gas, assimilator.GetID());
                 }
             }
         }
+
+        foreach (var unit in workers.Where(u => u.IsIdle()))
+        {
+            AssignWorkerToMinerals(game, unit);
+        }
+
+        var unassignedWorkers = workers.Where(u => !WorkerAssignments.ContainsKey(u.GetID())).ToList();
+
+        foreach (var unit in unassignedWorkers)
+        {
+            AssignWorkerToMinerals(game, unit);
+        }
     }
+
+    private void RemoveDeadWorkersFromAssignments(List<Unit> workers)
+    {
+        var validWorkerIds = workers.Select(w => w.GetID()).ToHashSet();
+        var deadWorkerIds = WorkerAssignments.Keys.Where(id => !validWorkerIds.Contains(id)).ToList();
+        foreach (var deadId in deadWorkerIds)
+        {
+            WorkerAssignments.Remove(deadId);
+        }
+    }
+
+    private void AssignWorkerToMinerals(Game game, Unit worker)
+    {
+        var workersPerMineral = WorkerAssignments.Values
+            .Where(a => a.Assignment == WorkerAssignment.Minerals && a.TargetId.HasValue)
+            .GroupBy(a => a.TargetId!.Value)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var nearestMineral = game.GetMinerals()
+            .Where(m => workersPerMineral.GetValueOrDefault(m.GetID(), 0) < 3)
+            .OrderBy(m => m.GetPosition().GetDistance(worker.GetPosition()))
+            .FirstOrDefault();
+
+        if (nearestMineral != null)
+        {
+            worker.Gather(nearestMineral);
+            WorkerAssignments[worker.GetID()] = (WorkerAssignment.Minerals, nearestMineral.GetID());
+        }
+    }
+
 
     public void OnUnitComplete(Unit unit)
     {
-        if (_game == null) return;
-
-        // if (unit.GetUnitType().IsWorker())
-        // {
-        //     Unit? closestMineral = null;
-        //     int closestDistance = int.MaxValue;
-
-        //     foreach (Unit mineral in _game.GetMinerals())
-        //     {
-        //         int distance = unit.GetDistance(mineral);
-        //         if (distance < closestDistance)
-        //         {
-        //             closestMineral = mineral;
-        //             closestDistance = distance;
-        //         }
-        //     }
-
-        //     if (closestMineral != null)
-        //     {
-        //         unit.Gather(closestMineral);
-        //     }
-        // }
     }
 
     public void OnUnitDestroy(Unit unit)
     {
-        // Bot logic for unit destruction
     }
 
     public void OnUnitMorph(Unit unit)
     {
-        // Bot logic for unit morphing
     }
 
     public void OnSendText(string text)
     {
-        // Bot logic for text messages
     }
 
     public void OnReceiveText(Player player, string text)
     {
-        // Bot logic for received text
     }
 
     public void OnPlayerLeft(Player player)
     {
-        // Bot logic for player leaving
     }
 
     public void OnNukeDetect(Position target)
     {
-        // Bot logic for nuke detection
     }
 
     public void OnUnitEvade(Unit unit)
     {
-        // Bot logic for unit evasion
     }
 
     public void OnUnitShow(Unit unit)
     {
-        // Bot logic for unit visibility
     }
 
     public void OnUnitHide(Unit unit)
     {
-        // Bot logic for unit hiding
     }
 
     public void OnUnitCreate(Unit unit)
     {
-        // Bot logic for unit creation
     }
 
     public void OnUnitRenegade(Unit unit)
     {
-        // Bot logic for unit renegade
     }
 
     public void OnSaveGame(string gameName)
     {
-        // Bot logic for save game
     }
 
     public void OnUnitDiscover(Unit unit)
     {
-        // Bot logic for unit discovery
     }
 }

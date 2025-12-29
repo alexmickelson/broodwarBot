@@ -17,6 +17,24 @@
     </div>
 </div>
 
+<div class="bg-gray-800 rounded-lg p-3 mb-3">
+    <h3 class="text-gray-300 mb-2">Worker Assignments</h3>
+    <div class="flex flex-row gap-4">
+        <div class="flex-1 bg-gray-700 rounded-lg p-2 flex flex-col items-center">
+            <span class="text-white text-lg">@GetWorkerCount(WorkerAssignment.Minerals)</span>
+            <span class="text-gray-300 text-sm">Minerals</span>
+        </div>
+        <div class="flex-1 bg-gray-700 rounded-lg p-2 flex flex-col items-center">
+            <span class="text-white text-lg">@GetWorkerCount(WorkerAssignment.Gas)</span>
+            <span class="text-gray-300 text-sm">Gas</span>
+        </div>
+        <div class="flex-1 bg-gray-700 rounded-lg p-2 flex flex-col items-center">
+            <span class="text-white text-lg">@GetWorkerCount(WorkerAssignment.Building)</span>
+            <span class="text-gray-300 text-sm">Building</span>
+        </div>
+    </div>
+</div>
+
 <div class=" mb-4">
     <h2 class="">Units</h2>
     @foreach (var unitGroup in GetUnitsByType())
@@ -44,9 +62,10 @@
     }
 </div>
 
+
 <div class="">
     <h2 class="">Buildings</h2>
-        <div class="mt-2 p-2 bg-gray-800 rounded-lg">
+    <div class="mt-2 p-2 bg-gray-800 rounded-lg">
         @foreach (var buildingGroup in GetBuildingsByType())
         {
             <div class="text-gray-300">@buildingGroup.Key.ToString()s</div>
@@ -58,12 +77,12 @@
                         {
                             <div class="flex flex-row gap-2">
                                 <div>
-                                    Training: 
+                                    Training:
                                 </div>
                                 @foreach (var queued in building.GetTrainingQueue())
                                 {
                                     <div>
-                                        @queued 
+                                        @queued
                                     </div>
                                 }
                             </div>
@@ -109,6 +128,11 @@
     private int GetGas() => BotService.Game?.Self()?.Gas() ?? 0;
     private int GetSupplyUsed() => BotService.Game?.Self()?.SupplyUsed() ?? 0;
     private int GetSupplyTotal() => BotService.Game?.Self()?.SupplyTotal() ?? 0;
+
+    private int GetWorkerCount(WorkerAssignment assignment)
+    {
+        return BotService.Bot?.WorkerAssignments?.Values.Count(a => a.Assignment == assignment) ?? 0;
+    }
 
     private IEnumerable<BWAPI.NET.Unit> GetUnits()
     {
