@@ -42,6 +42,13 @@ public class BotBuildOrder
         UnitType.Protoss_Dragoon,
     };
 
+    public Dictionary<UnitType, int> DesiredUnitCounts { get; } = new Dictionary<UnitType, int>
+    {
+        { UnitType.Protoss_Probe, 20 },
+        { UnitType.Protoss_Zealot, 5 },
+        { UnitType.Protoss_Dragoon, 10 },
+    };
+
     public BotBuildOrder(Dictionary<int, (WorkerAssignment Assignment, int? TargetId)> workerAssignments)
     {
         _workerAssignments = workerAssignments;
@@ -75,7 +82,7 @@ public class BotBuildOrder
         }
         if (!BuildQueue.Any())
         {
-            return;
+            AddSomethingToBuildQueue(game);
         }
 
 
@@ -102,6 +109,11 @@ public class BotBuildOrder
         }
 
         buildCommand();
+    }
+
+    private void AddSomethingToBuildQueue(Game game)
+    {
+        
     }
 
     private Func<bool>? GetBuildBuildingCommand(Game game, UnitType nextBuilding)

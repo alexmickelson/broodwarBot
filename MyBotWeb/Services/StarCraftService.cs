@@ -45,7 +45,8 @@ public class StarCraftService
 
         var startInfo = new ProcessStartInfo
         {
-            FileName = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher", "Chaoslauncher.exe"),
+            FileName = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher", "Chaoslauncher - MultiInstance.exe"),
+            // FileName = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher", "Chaoslauncher.exe"),
             WorkingDirectory = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher"),
             UseShellExecute = false,
             Verb = "", // Ensure no elevation
