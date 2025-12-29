@@ -1,0 +1,393 @@
+@using BWAPI.NET
+@using MyBotWeb.Services
+@inject BotService BotService
+@implements IDisposable
+
+<div class="bg-gray-900 rounded-lg p-4 mb-3">
+    @if (BotService.Game != null)
+    {
+        <div class="relative bg-black border-2 border-gray-700 rounded overflow-hidden"
+            style="width: @(svgWidthPx)px; height: @(svgWidthPx * GetMapHeight() / GetMapWidth())px;">
+            <svg width="@svgWidthPx" height="@(svgWidthPx * GetMapHeight() / GetMapWidth())" viewBox="0 0 @GetMapWidth() @GetMapHeight()"
+                preserveAspectRatio="xMidYMid meet" @onclick="HandleMapClick">
+                <!-- Explored areas -->
+                @foreach (var exploredRect in GetExploredAreas())
+                {
+                    <rect x="@exploredRect.x" y="@exploredRect.y" width="@exploredRect.width" height="@exploredRect.height"
+                        fill="@ColorExplored" opacity="0.8" />
+                }
+
+                <!-- Unexplored areas (fog of war) -->
+                @foreach (var unexploredRect in GetUnexploredAreas())
+                {
+                    <rect x="@unexploredRect.x" y="@unexploredRect.y" width="@unexploredRect.width"
+                        height="@unexploredRect.height" fill="@ColorUnexplored" opacity="0.9" />
+                }
+
+                <!-- Unwalkable terrain -->
+                @foreach (var unwalkableRect in GetUnwalkableAreas())
+                {
+                    <rect x="@unwalkableRect.x" y="@unwalkableRect.y" width="@unwalkableRect.width"
+                        height="@unwalkableRect.height" fill="@ColorUnwalkable" opacity="0.8" />
+                }
+
+                <!-- Grid lines -->
+                @for (int x = 0; x < GetMapWidth(); x += 32)
+                {
+                    <line x1="@x" y1="0" x2="@x" y2="@GetMapHeight()" stroke="@ColorGridLines" stroke-width="0.5" />
+                }
+                @for (int y = 0; y < GetMapHeight(); y += 32)
+                {
+                    <line x1="0" y1="@y" x2="@GetMapWidth()" y2="@y" stroke="@ColorGridLines" stroke-width="0.5" />
+                }
+
+                <!-- Minerals -->
+                @foreach (var mineral in GetMinerals())
+                {
+                    <circle cx="@mineral.GetPosition().X" cy="@mineral.GetPosition().Y" r="6" fill="@ColorMineral"
+                        opacity="0.7">
+                        <title>Mineral Field</title>
+                    </circle>
+                }
+
+                <!-- Gas Geysers -->
+                @foreach (var geyser in GetGeysers())
+                {
+                    <circle cx="@geyser.GetPosition().X" cy="@geyser.GetPosition().Y" r="8" fill="@ColorGeyser" opacity="0.7">
+                        <title>Vespene Geyser</title>
+                    </circle>
+                }
+
+                <!-- Friendly Buildings -->
+                @foreach (var building in GetFriendlyBuildings())
+                {
+                    var size = GetBuildingSize(building.GetUnitType());
+                    var pos = building.GetPosition();
+                    <rect x="@(pos.X - size.width / 2)" y="@(pos.Y - size.height / 2)" width="@size.width" height="@size.height"
+                        fill="@ColorFriendlyBuilding" stroke="@ColorFriendlyBuildingStroke" stroke-width="1" opacity="0.8">
+                        <title>@building.GetUnitType().ToString()
+                            (@building.GetHitPoints()/@building.GetUnitType().MaxHitPoints())</title>
+                    </rect>
+                }
+
+                <!-- Friendly Units -->
+                @foreach (var unit in GetFriendlyUnits())
+                {
+                    var pos = unit.GetPosition();
+                    <circle cx="@pos.X" cy="@pos.Y" r="4" fill="@ColorFriendlyUnit" stroke="@ColorFriendlyUnitStroke"
+                        stroke-width="1">
+                        <title>@unit.GetUnitType().ToString() (@unit.GetHitPoints()/@unit.GetUnitType().MaxHitPoints())</title>
+                    </circle>
+                }
+
+                <!-- Enemy Buildings -->
+                @foreach (var building in GetEnemyBuildings())
+                {
+                    var size = GetBuildingSize(building.GetUnitType());
+                    var pos = building.GetPosition();
+                    <rect x="@(pos.X - size.width / 2)" y="@(pos.Y - size.height / 2)" width="@size.width" height="@size.height"
+                        fill="@ColorEnemyBuilding" stroke="@ColorEnemyBuildingStroke" stroke-width="1" opacity="0.8">
+                        <title>Enemy: @building.GetUnitType().ToString()
+                            (@building.GetHitPoints()/@building.GetUnitType().MaxHitPoints())</title>
+                    </rect>
+                }
+
+                <!-- Enemy Units -->
+                @foreach (var unit in GetEnemyUnits())
+                {
+                    var pos = unit.GetPosition();
+                    <circle cx="@pos.X" cy="@pos.Y" r="4" fill="@ColorEnemyUnit" stroke="@ColorEnemyUnitStroke"
+                        stroke-width="1">
+                        <title>Enemy: @unit.GetUnitType().ToString() (@unit.GetHitPoints()/@unit.GetUnitType().MaxHitPoints())
+                        </title>
+                    </circle>
+                }
+
+                <!-- Start Locations -->
+                @foreach (var startLoc in GetStartLocations())
+                {
+                    var pos = startLoc.ToPosition();
+                    <circle cx="@pos.X" cy="@pos.Y" r="12" fill="none" stroke="@ColorStartLocation" stroke-width="2"
+                        stroke-dasharray="4,2">
+                        <title>Start Location</title>
+                    </circle>
+                }
+
+                <!-- Military Target Point -->
+                @if (BotService.Bot.MilitaryPoint != Position.None)
+                {
+                    var target = BotService.Bot.MilitaryPoint;
+                    <!-- Outer circle -->
+                    <circle cx="@target.X" cy="@target.Y" r="20" fill="none" stroke="@ColorMilitaryTarget" stroke-width="2">
+                        <title>Military Target</title>
+                    </circle>
+                    <!-- Middle circle -->
+                    <circle cx="@target.X" cy="@target.Y" r="12" fill="none" stroke="@ColorMilitaryTarget" stroke-width="2">
+                    </circle>
+                    <!-- Center dot -->
+                    <circle cx="@target.X" cy="@target.Y" r="3" fill="@ColorMilitaryTarget">
+                    </circle>
+                    <!-- Crosshairs -->
+                    <line x1="@(target.X - 25)" y1="@target.Y" x2="@(target.X - 20)" y2="@target.Y"
+                        stroke="@ColorMilitaryTarget" stroke-width="2" />
+                    <line x1="@(target.X + 20)" y1="@target.Y" x2="@(target.X + 25)" y2="@target.Y"
+                        stroke="@ColorMilitaryTarget" stroke-width="2" />
+                    <line x1="@target.X" y1="@(target.Y - 25)" x2="@target.X" y2="@(target.Y - 20)"
+                        stroke="@ColorMilitaryTarget" stroke-width="2" />
+                    <line x1="@target.X" y1="@(target.Y + 20)" x2="@target.X" y2="@(target.Y + 25)"
+                        stroke="@ColorMilitaryTarget" stroke-width="2" />
+                }
+            </svg>
+        </div>
+
+        <div class="mt-3 flex flex-row flex-wrap gap-4 text-sm">
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-blue-500 rounded"></div>
+                <span class="text-gray-300">Friendly Units</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-red-500 rounded"></div>
+                <span class="text-gray-300">Enemy Units</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-cyan-400 rounded"></div>
+                <span class="text-gray-300">Minerals</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-green-500 rounded"></div>
+                <span class="text-gray-300">Gas</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-gray-500 rounded"></div>
+                <span class="text-gray-300">Explored</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-gray-800 rounded"></div>
+                <span class="text-gray-300">Unexplored</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-black border border-gray-500 rounded"></div>
+                <span class="text-gray-300">Unwalkable</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded border-2 border-red-500"></div>
+                <span class="text-gray-300">Military Target</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-gray-500 text-center py-8">
+            No game in progress
+        </div>
+    }
+</div>
+
+@code {
+    private System.Threading.Timer? timer;
+
+    [Parameter]
+    public EventCallback<Position> OnMapClick { get; set; }
+
+
+    private int svgWidthPx = 800;
+    private string ColorExplored = "#6b7280";
+    private string ColorUnexplored = "#3B3B3B";
+    private string ColorUnwalkable = "#000000";
+    private string ColorGridLines = "#374151";
+    private string ColorMineral = "#00ffff";
+    private string ColorGeyser = "#00ff00";
+    private string ColorFriendlyBuilding = "#3b82f6";
+    private string ColorFriendlyBuildingStroke = "#1e40af";
+    private string ColorFriendlyUnit = "#60a5fa";
+    private string ColorFriendlyUnitStroke = "#1e40af";
+    private string ColorEnemyBuilding = "#dc2626";
+    private string ColorEnemyBuildingStroke = "#991b1b";
+    private string ColorEnemyUnit = "#f87171";
+    private string ColorEnemyUnitStroke = "#991b1b";
+    private string ColorStartLocation = "#fbbf24"; private string ColorMilitaryTarget = "#ef4444";
+    protected override void OnInitialized()
+    {
+        // Refresh the UI every 500ms
+        timer = new(_ =>
+        {
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+
+    private async Task HandleMapClick(Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
+    {
+        if (BotService.Game == null) return;
+        var mapWidth = GetMapWidth();
+        var mapHeight = GetMapHeight();
+
+        var svgHeightPx = svgWidthPx * mapHeight / mapWidth;
+        var x = (int)(e.OffsetX * mapWidth / svgWidthPx);
+        var y = (int)(e.OffsetY * mapHeight / svgHeightPx);
+
+        if (OnMapClick.HasDelegate)
+        {
+            await OnMapClick.InvokeAsync(new Position(x, y));
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private int GetMapWidth() => (BotService.Game?.MapWidth() ?? 128) * 32;
+    private int GetMapHeight() => (BotService.Game?.MapHeight() ?? 128) * 32;
+    private string GetAspectRatio() => $"{GetMapWidth()} / {GetMapHeight()}";
+
+    private IEnumerable<Unit> GetFriendlyUnits()
+    {
+        if (BotService.Game == null) return Enumerable.Empty<Unit>();
+
+        var allUnits = BotService.Game.Self()?.GetUnits() ?? Enumerable.Empty<Unit>();
+        return allUnits.Where(u => u.Exists() && !u.GetUnitType().IsBuilding());
+    }
+
+    private IEnumerable<Unit> GetFriendlyBuildings()
+    {
+        if (BotService.Game == null) return Enumerable.Empty<Unit>();
+
+        var allUnits = BotService.Game.Self()?.GetUnits() ?? Enumerable.Empty<Unit>();
+        return allUnits.Where(u => u.Exists() && u.GetUnitType().IsBuilding());
+    }
+
+    private IEnumerable<Unit> GetEnemyUnits()
+    {
+        if (BotService.Game == null) return Enumerable.Empty<Unit>();
+
+        return BotService.Game.GetAllUnits()
+        .Where(u => u.Exists() &&
+        u.GetPlayer() != null &&
+        u.GetPlayer() != BotService.Game.Self() &&
+        !u.GetPlayer().IsNeutral() &&
+        !u.GetUnitType().IsBuilding());
+    }
+
+    private IEnumerable<Unit> GetEnemyBuildings()
+    {
+        if (BotService.Game == null) return Enumerable.Empty<Unit>();
+
+        return BotService.Game.GetAllUnits()
+        .Where(u => u.Exists() &&
+        u.GetPlayer() != null &&
+        u.GetPlayer() != BotService.Game.Self() &&
+        !u.GetPlayer().IsNeutral() &&
+        u.GetUnitType().IsBuilding());
+    }
+
+    private IEnumerable<Unit> GetMinerals()
+    {
+        if (BotService.Game == null) return Enumerable.Empty<Unit>();
+
+        return BotService.Game.GetAllUnits()
+        .Where(u => u.Exists() && u.GetUnitType().IsMineralField());
+    }
+
+    private IEnumerable<Unit> GetGeysers()
+    {
+        if (BotService.Game == null) return Enumerable.Empty<Unit>();
+
+        return BotService.Game.GetAllUnits()
+        .Where(u => u.Exists() &&
+        (u.GetUnitType() == UnitType.Resource_Vespene_Geyser ||
+        u.GetUnitType().IsRefinery()));
+    }
+
+    private IEnumerable<TilePosition> GetStartLocations()
+    {
+        if (BotService.Game == null) return Enumerable.Empty<TilePosition>();
+        return BotService.Game.GetStartLocations();
+    }
+
+    private List<(int x, int y, int width, int height)> GetExploredAreas()
+    {
+        if (BotService.Game == null) return new List<(int, int, int, int)>();
+
+        var exploredRects = new List<(int x, int y, int width, int height)>();
+        var mapWidthTiles = BotService.Game.MapWidth();
+        var mapHeightTiles = BotService.Game.MapHeight();
+
+        // Sample every 2 tiles to reduce number of rectangles
+        int sampleRate = 2;
+
+        for (int tileY = 0; tileY < mapHeightTiles; tileY += sampleRate)
+        {
+            for (int tileX = 0; tileX < mapWidthTiles; tileX += sampleRate)
+            {
+                var tilePos = new TilePosition(tileX, tileY);
+                if (BotService.Game.IsExplored(tilePos))
+                {
+                    exploredRects.Add((tileX * 32, tileY * 32, sampleRate * 32, sampleRate * 32));
+                }
+            }
+        }
+
+        return exploredRects;
+    }
+
+    private List<(int x, int y, int width, int height)> GetUnexploredAreas()
+    {
+        if (BotService.Game == null) return new List<(int, int, int, int)>();
+
+        var unexploredRects = new List<(int x, int y, int width, int height)>();
+        var mapWidthTiles = BotService.Game.MapWidth();
+        var mapHeightTiles = BotService.Game.MapHeight();
+
+        // Sample every 2 tiles to reduce number of rectangles
+        int sampleRate = 2;
+
+        for (int tileY = 0; tileY < mapHeightTiles; tileY += sampleRate)
+        {
+            for (int tileX = 0; tileX < mapWidthTiles; tileX += sampleRate)
+            {
+                var tilePos = new TilePosition(tileX, tileY);
+                if (!BotService.Game.IsExplored(tilePos))
+                {
+                    unexploredRects.Add((tileX * 32, tileY * 32, sampleRate * 32, sampleRate * 32));
+                }
+            }
+        }
+
+        return unexploredRects;
+    }
+
+    private List<(int x, int y, int width, int height)> GetUnwalkableAreas()
+    {
+        if (BotService.Game == null) return new List<(int, int, int, int)>();
+
+        var unwalkableRects = new List<(int x, int y, int width, int height)>();
+        var mapWidthTiles = BotService.Game.MapWidth();
+        var mapHeightTiles = BotService.Game.MapHeight();
+
+        // Sample every tile for unwalkable terrain
+        int sampleRate = 1;
+
+        for (int tileY = 0; tileY < mapHeightTiles; tileY += sampleRate)
+        {
+            for (int tileX = 0; tileX < mapWidthTiles; tileX += sampleRate)
+            {
+                var tilePos = new TilePosition(tileX, tileY);
+                // Check if tile is unwalkable (not buildable usually means terrain)
+                if (!BotService.Game.IsWalkable(new WalkPosition(tileX * 4, tileY * 4)))
+                {
+                    unwalkableRects.Add((tileX * 32, tileY * 32, sampleRate * 32, sampleRate * 32));
+                }
+            }
+        }
+
+        return unwalkableRects;
+    }
+
+    private (int width, int height) GetBuildingSize(UnitType type)
+    {
+        // Approximate building sizes in pixels (builds are in tiles, 1 tile = 32 pixels)
+        return (type.TileWidth() * 32, type.TileHeight() * 32);
+    }
+}

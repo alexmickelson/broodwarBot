@@ -1,0 +1,41 @@
+@using BWAPI.NET
+@inject BotService botService
+
+<div class="flex gap-2 mb-4 text-sm">
+    <button @onclick="() => clickMode = ClickMode.Military"
+        class="
+            px-3 py-1 rounded border transition-colors 
+            @(clickMode == ClickMode.Military ? selectedClass : inactiveClass)
+        ">
+        Military
+    </button>
+    <button @onclick="() => clickMode = ClickMode.Minimap"
+        class="
+            px-3 py-1 rounded border transition-colors 
+            @(clickMode == ClickMode.Minimap ? selectedClass : inactiveClass)
+    ">
+        Minimap
+    </button>
+</div>
+
+<MapVisualization OnMapClick="OnMapClick" />
+
+@code {
+    private enum ClickMode { Military, Minimap }
+    private ClickMode clickMode = ClickMode.Military;
+
+    private string selectedClass => "border-blue-500 bg-blue-950 text-blue-300";
+    private string inactiveClass => "border-gray-600 bg-gray-800 text-gray-400 hover:bg-gray-700";
+
+    private void OnMapClick(Position position)
+    {
+        if (clickMode == ClickMode.Military)
+        {
+            botService.Bot.MilitaryPoint = position;
+        }
+        else
+        {
+            botService.Bot.MoveMinimapPoint = position;
+        }
+    }
+}

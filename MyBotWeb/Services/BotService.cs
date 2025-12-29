@@ -12,9 +12,10 @@ public class BotService : DefaultBWListener
     public int? GameSpeedToSet { get; set; } = null;
     public event Action? GameStartedOrEnded;
     public event Action? GameEnded;
+
+
     public void StartBot()
     {
-        Bot = new MyBot();
         _bwClient = new BWClient(this);
         GameStatus = "Connected - Waiting for Game";
         _bwClient.StartGame();
@@ -22,7 +23,11 @@ public class BotService : DefaultBWListener
 
     public void ResetBot()
     {
+        Console.WriteLine("ResetBot called - cleaning up BWClient");
+
+        (_bwClient as IDisposable)?.Dispose();
         _bwClient = null;
+
         Game = null;
         Bot = new MyBot();
         IsInGame = false;
@@ -51,15 +56,13 @@ public class BotService : DefaultBWListener
         IsInGame = false;
 
         Bot.OnEnd(isWinner);
-        GameStartedOrEnded?.Invoke();
-        GameEnded?.Invoke();
         ResetBot();
     }
 
     public override void OnFrame()
     {
         if (Game == null) return;
-        if(GameSpeedToSet != null)
+        if (GameSpeedToSet != null)
         {
             Game.SetLocalSpeed(GameSpeedToSet.Value);
             GameSpeedToSet = null;

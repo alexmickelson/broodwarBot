@@ -36,20 +36,17 @@ public class StarCraftService
         return mapFiles;
     }
 
-    public async Task StartStarCraftAsync(GamePreferences? gamePreferences = null)
+    public async Task StartStarCraftAsync(GamePreferences gamePreferences)
     {
-        gamePreferences ??= new GamePreferences();
-
-        // Configure bwapi.ini for auto-start
         BwapiConfigService.ConfigureBwapiIni(gamePreferences);
 
+        var executable = gamePreferences.AutoMenu == "SINGLE_PLAYER" ?  "Chaoslauncher.exe" : "Chaoslauncher - MultiInstance.exe";
         var startInfo = new ProcessStartInfo
         {
-            FileName = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher", "Chaoslauncher - MultiInstance.exe"),
-            // FileName = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher", "Chaoslauncher.exe"),
+            FileName = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher",  "Chaoslauncher - MultiInstance.exe"),
             WorkingDirectory = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher"),
             UseShellExecute = false,
-            Verb = "", // Ensure no elevation
+            Verb = "",
             CreateNoWindow = false,
         };
 
@@ -61,7 +58,6 @@ public class StarCraftService
 
     private void ClickStartButton()
     {
-
         IntPtr startButtonHandle = IntPtr.Zero;
         IntPtr chaosWindow = WindowUtils.FindWindow(null, "Chaoslauncher");
 
@@ -76,24 +72,18 @@ public class StarCraftService
         {
             var className = new System.Text.StringBuilder(256);
             WindowUtils.GetClassName(hwnd, className, className.Capacity);
+            string cls = className.ToString();
 
             var windowText = new System.Text.StringBuilder(256);
             WindowUtils.GetWindowText(hwnd, windowText, windowText.Capacity);
-
             string text = windowText.ToString();
-            string cls = className.ToString();
 
-            Console.WriteLine($"Found child window: Class='{cls}', Text='{text}'");
-
-            // Look for button with "Start" text (case-insensitive)
-            if (text.Equals("Start", StringComparison.OrdinalIgnoreCase) ||
-                text.Contains("Start", StringComparison.OrdinalIgnoreCase))
+            if (text.Contains("Start", StringComparison.OrdinalIgnoreCase))
             {
                 startButtonHandle = hwnd;
                 Console.WriteLine($"Found Start button! Handle: {hwnd}");
                 return false; // Stop enumeration
             }
-
             return true; // Continue enumeration
         }, IntPtr.Zero);
 
