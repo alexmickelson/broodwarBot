@@ -33,80 +33,7 @@ public static class MilitaryUnitUtils
       switch (assignmentDetail.Assignment)
       {
         case UnitAssignment.Attacking:
-          if (assignmentDetail.TargetPosition == null)
-            break;
-          var targetPosition = (Position)assignmentDetail.TargetPosition;
-
-          if (unit.GetPosition().GetDistance(targetPosition) < 64)
-          {
-            // Stand and attack nearby enemies
-            if (!unit.IsIdle())
-            {
-              break;
-            }
-            var nearbyEnemies = game.GetAllUnits()
-              .Where(e =>
-                e.GetPlayer() != game.Self()
-                && !e.GetPlayer().IsNeutral()
-                && e.GetPosition().GetDistance(unit.GetPosition()) < unit.GetUnitType().SightRange()
-              )
-              .OrderBy(e => e.GetUnitType().IsBuilding())
-              .ThenBy(e => e.GetPosition().GetDistance(unit.GetPosition()))
-              .FirstOrDefault();
-
-            if (nearbyEnemies != null)
-            {
-              unit.Attack(nearbyEnemies);
-            }
-          }
-          else
-          {
-            // Check if unit is under attack - defend yourself!
-            var attackingEnemies = game.GetAllUnits()
-              .Where(e =>
-                e.GetPlayer() != game.Self()
-                && !e.GetPlayer().IsNeutral()
-                && e.GetPosition().GetDistance(unit.GetPosition()) < unit.GetUnitType().SightRange()
-              )
-              .OrderBy(e => e.GetUnitType().IsBuilding())
-              .ThenBy(e => e.GetPosition().GetDistance(unit.GetPosition()))
-              .ThenBy(e => e.GetHitPoints())
-              .FirstOrDefault();
-
-            var inRangeEnemies = game.GetAllUnits()
-              .Where(e =>
-                e.GetPlayer() != game.Self()
-                && !e.GetPlayer().IsNeutral()
-                && e.GetPosition().GetDistance(unit.GetPosition())
-                  < (unit.GetUnitType().GroundWeapon().MaxRange() + 10)
-              )
-              .OrderBy(e => e.GetUnitType().IsBuilding())
-              .ThenBy(e => e.GetPosition().GetDistance(unit.GetPosition()))
-              .ThenBy(e => e.GetHitPoints())
-              .FirstOrDefault();
-
-            if (attackingEnemies != null)
-            {
-              if (unit.GetOrderTarget() != attackingEnemies)
-              {
-                unit.Attack(attackingEnemies);
-              }
-            }
-            if (inRangeEnemies != null)
-            {
-              if (unit.GetOrderTarget() != inRangeEnemies)
-              {
-                unit.Attack(inRangeEnemies);
-              }
-            }
-            else if (
-              unit.IsIdle()
-              || (unit.GetOrderTarget() == null && unit.GetTargetPosition() != targetPosition)
-            )
-            {
-              unit.Attack(targetPosition);
-            }
-          }
+          HandleAttackingUnit(game, unit, assignmentDetail);
           break;
         default:
           break;
@@ -114,6 +41,91 @@ public static class MilitaryUnitUtils
     }
 
     return unitAssignments;
+  }
+
+  private static void HandleAttackingUnit(
+    Game game,
+    Unit unit,
+    UnitAssignmentDetail assignmentDetail
+  )
+  {
+    if (assignmentDetail.TargetPosition == null)
+      return;
+    var targetPosition = (Position)assignmentDetail.TargetPosition;
+
+    if (unit.GetPosition().GetDistance(targetPosition) < 64)
+    {
+      // Stand and attack nearby enemies
+      if (!unit.IsIdle())
+      {
+        return;
+      }
+      var nearbyEnemies = game.GetAllUnits()
+        .Where(e =>
+          e.GetPlayer() != game.Self()
+          && !e.GetPlayer().IsNeutral()
+          && e.GetPosition().GetDistance(unit.GetPosition()) < unit.GetUnitType().SightRange()
+        )
+        .OrderBy(e => e.GetUnitType().IsBuilding())
+        .ThenBy(e => e.GetPosition().GetDistance(unit.GetPosition()))
+        .FirstOrDefault();
+
+      if (nearbyEnemies != null)
+      {
+        unit.Attack(nearbyEnemies);
+      }
+    }
+    else
+    {
+      var myUnits = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self()).ToList();
+
+      var attackingEnemies = game.GetAllUnits()
+        .Where(e =>
+          e.GetPlayer() != game.Self()
+          && !e.GetPlayer().IsNeutral()
+          && myUnits.Any(myUnit =>
+            e.GetPosition().GetDistance(myUnit.GetPosition()) < e.GetUnitType().SightRange()
+          )
+        )
+        .OrderBy(e => e.GetUnitType().IsBuilding())
+        .ThenBy(e => e.GetPosition().GetDistance(unit.GetPosition()))
+        .ThenBy(e => e.GetHitPoints())
+        .FirstOrDefault();
+
+      var inRangeEnemies = game.GetAllUnits()
+        .Where(e =>
+          e.GetPlayer() != game.Self()
+          && !e.GetPlayer().IsNeutral()
+          && e.GetPosition().GetDistance(unit.GetPosition())
+            < (unit.GetUnitType().GroundWeapon().MaxRange() + 10)
+        )
+        .OrderBy(e => e.GetUnitType().IsBuilding())
+        .ThenBy(e => e.GetPosition().GetDistance(unit.GetPosition()))
+        .ThenBy(e => e.GetHitPoints())
+        .FirstOrDefault();
+
+      if (attackingEnemies != null)
+      {
+        if (unit.GetOrderTarget() != attackingEnemies)
+        {
+          unit.Attack(attackingEnemies);
+        }
+      }
+      if (inRangeEnemies != null)
+      {
+        if (unit.GetOrderTarget() != inRangeEnemies)
+        {
+          unit.Attack(inRangeEnemies);
+        }
+      }
+      else if (
+        unit.IsIdle()
+        || (unit.GetOrderTarget() == null && unit.GetTargetPosition() != targetPosition)
+      )
+      {
+        unit.Attack(targetPosition);
+      }
+    }
   }
 
   public static ImmutableDictionary<int, UnitAssignmentDetail> RemoveDeadUnitsFromAssignments(
