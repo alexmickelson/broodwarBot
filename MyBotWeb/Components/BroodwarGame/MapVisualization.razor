@@ -9,7 +9,7 @@
         <div class="relative bg-black border-2 border-gray-700 rounded overflow-hidden"
             style="width: @(svgWidthPx)px; height: @(svgWidthPx * GetMapHeight() / GetMapWidth())px;">
             <svg width="@svgWidthPx" height="@(svgWidthPx * GetMapHeight() / GetMapWidth())" viewBox="0 0 @GetMapWidth() @GetMapHeight()"
-                preserveAspectRatio="xMidYMid meet" @onclick="HandleMapClick">
+                preserveAspectRatio="xMidYMid meet" @onclick="HandleMapLeftClick" @oncontextmenu="HandleMapRightClick" @oncontextmenu:preventDefault>
                 <!-- Explored areas -->
                 @foreach (var exploredRect in GetExploredAreas())
                 {
@@ -187,7 +187,10 @@
     private System.Threading.Timer? timer;
 
     [Parameter]
-    public EventCallback<Position> OnMapClick { get; set; }
+    public EventCallback<Position> OnMapLeftClick { get; set; }
+
+    [Parameter]
+    public EventCallback<Position> OnMapRightClick { get; set; }
 
 
     private int svgWidthPx = 800;
@@ -220,7 +223,7 @@
         timer?.Dispose();
     }
 
-    private async Task HandleMapClick(Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
+    private async Task HandleMapLeftClick(Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
     {
         if (BotService.Game == null) return;
         var mapWidth = GetMapWidth();
@@ -230,9 +233,27 @@
         var x = (int)(e.OffsetX * mapWidth / svgWidthPx);
         var y = (int)(e.OffsetY * mapHeight / svgHeightPx);
 
-        if (OnMapClick.HasDelegate)
+        if (OnMapLeftClick.HasDelegate)
         {
-            await OnMapClick.InvokeAsync(new Position(x, y));
+            await OnMapLeftClick.InvokeAsync(new Position(x, y));
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleMapRightClick(Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
+    {
+        if (BotService.Game == null) return;
+        var mapWidth = GetMapWidth();
+        var mapHeight = GetMapHeight();
+
+        var svgHeightPx = svgWidthPx * mapHeight / mapWidth;
+        var x = (int)(e.OffsetX * mapWidth / svgWidthPx);
+        var y = (int)(e.OffsetY * mapHeight / svgHeightPx);
+
+        if (OnMapRightClick.HasDelegate)
+        {
+            await OnMapRightClick.InvokeAsync(new Position(x, y));
         }
 
         await InvokeAsync(StateHasChanged);

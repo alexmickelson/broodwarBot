@@ -35,12 +35,16 @@ public class BotBuildOrder
             UnitType.Protoss_Pylon,
             UnitType.Protoss_Pylon,
             UnitType.Protoss_Probe,
+            UnitType.Protoss_Probe,
             UnitType.Protoss_Pylon,
             UnitType.Protoss_Zealot,
+            UnitType.Protoss_Probe,
             UnitType.Protoss_Dragoon,
             UnitType.Protoss_Probe,
             UnitType.Protoss_Dragoon,
+            UnitType.Protoss_Probe,
             UnitType.Protoss_Dragoon,
+            UnitType.Protoss_Probe,
             UnitType.Protoss_Probe,
             UnitType.Protoss_Dragoon,
         };
@@ -126,7 +130,31 @@ public class BotBuildOrder
         buildCommand();
     }
 
-    private void AddSomethingToBuildQueue(Game game) { }
+    private void AddSomethingToBuildQueue(Game game)
+    {
+        var supplyAvailable = game.Self().SupplyTotal() - game.Self().SupplyUsed();
+
+        if (supplyAvailable <= 10)
+        {
+            BuildQueue.Add(UnitType.Protoss_Pylon);
+            return;
+        }
+        var zelotCount = game.GetAllUnits()
+            .Count(u => u.GetPlayer() == game.Self() && u.GetUnitType() == UnitType.Protoss_Zealot);
+        if (zelotCount < 4)
+        {
+            BuildQueue.Add(UnitType.Protoss_Zealot);
+            return;
+        }
+
+        if (game.Self().Gas() > game.Self().Minerals())
+        {
+            BuildQueue.Add(UnitType.Protoss_Dragoon);
+            return;
+        }
+
+        BuildQueue.Add(UnitType.Protoss_Zealot);
+    }
 
     private Func<bool>? GetBuildBuildingCommand(Game game, UnitType nextBuilding)
     {

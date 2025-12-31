@@ -165,9 +165,7 @@ public class MyBot
                             .Where(e =>
                                 e.GetPlayer() != game.Self()
                                 && !e.GetPlayer().IsNeutral()
-                                &&
-                                //    e.GetOrderTarget() == unit &&
-                                e.GetPosition().GetDistance(unit.GetPosition())
+                                && e.GetPosition().GetDistance(unit.GetPosition())
                                     < unit.GetUnitType().SightRange()
                             )
                             .OrderBy(e => e.GetUnitType().IsBuilding())

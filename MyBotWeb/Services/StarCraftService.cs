@@ -15,7 +15,8 @@ public class StarCraftService
     private Process? _chaosLauncherProcess;
     private static readonly string _starcraftBasePath = Path.Combine(
         Directory.GetCurrentDirectory(),
-        "..", "Starcraft"
+        "..",
+        "Starcraft"
     );
 
     public List<string> GetMapOptions()
@@ -28,7 +29,8 @@ public class StarCraftService
             return new List<string>();
         }
 
-        var mapFiles = Directory.GetFiles(mapsDirectory, "*.sc?", SearchOption.TopDirectoryOnly)
+        var mapFiles = Directory
+            .GetFiles(mapsDirectory, "*.sc?", SearchOption.TopDirectoryOnly)
             .Select(path => $"maps/{Path.GetFileName(path)}")
             .OrderBy(name => name)
             .ToList();
@@ -40,10 +42,14 @@ public class StarCraftService
     {
         BwapiConfigService.ConfigureBwapiIni(gamePreferences);
 
-        var executable = gamePreferences.AutoMenu == "SINGLE_PLAYER" ?  "Chaoslauncher.exe" : "Chaoslauncher - MultiInstance.exe";
         var startInfo = new ProcessStartInfo
         {
-            FileName = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher",  "Chaoslauncher - MultiInstance.exe"),
+            FileName = Path.Combine(
+                _starcraftBasePath,
+                "BWAPI",
+                "Chaoslauncher",
+                "Chaoslauncher - MultiInstance.exe"
+            ),
             WorkingDirectory = Path.Combine(_starcraftBasePath, "BWAPI", "Chaoslauncher"),
             UseShellExecute = false,
             Verb = "",
@@ -68,24 +74,28 @@ public class StarCraftService
         }
         Console.WriteLine("Found Chaoslauncher window");
 
-        WindowUtils.EnumChildWindows(chaosWindow, (hwnd, lParam) =>
-        {
-            var className = new System.Text.StringBuilder(256);
-            WindowUtils.GetClassName(hwnd, className, className.Capacity);
-            string cls = className.ToString();
-
-            var windowText = new System.Text.StringBuilder(256);
-            WindowUtils.GetWindowText(hwnd, windowText, windowText.Capacity);
-            string text = windowText.ToString();
-
-            if (text.Contains("Start", StringComparison.OrdinalIgnoreCase))
+        WindowUtils.EnumChildWindows(
+            chaosWindow,
+            (hwnd, lParam) =>
             {
-                startButtonHandle = hwnd;
-                Console.WriteLine($"Found Start button! Handle: {hwnd}");
-                return false; // Stop enumeration
-            }
-            return true; // Continue enumeration
-        }, IntPtr.Zero);
+                var className = new System.Text.StringBuilder(256);
+                WindowUtils.GetClassName(hwnd, className, className.Capacity);
+                string cls = className.ToString();
+
+                var windowText = new System.Text.StringBuilder(256);
+                WindowUtils.GetWindowText(hwnd, windowText, windowText.Capacity);
+                string text = windowText.ToString();
+
+                if (text.Contains("Start", StringComparison.OrdinalIgnoreCase))
+                {
+                    startButtonHandle = hwnd;
+                    Console.WriteLine($"Found Start button! Handle: {hwnd}");
+                    return false; // Stop enumeration
+                }
+                return true; // Continue enumeration
+            },
+            IntPtr.Zero
+        );
 
         if (startButtonHandle == IntPtr.Zero)
         {
@@ -110,7 +120,7 @@ public class StarCraftService
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true
+                RedirectStandardError = true,
             };
 
             var process = Process.Start(processInfo);
@@ -140,7 +150,6 @@ public class StarCraftService
         Console.WriteLine("Stopping chaoslauncherprocess");
         if (_chaosLauncherProcess != null && !_chaosLauncherProcess.HasExited)
         {
-
             _chaosLauncherProcess.Kill();
             _chaosLauncherProcess.WaitForExit();
             _chaosLauncherProcess?.Dispose();
