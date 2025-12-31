@@ -8,19 +8,36 @@ public static class WindowUtils
     public static extern IntPtr FindWindow(string? lpClassName, string lpWindowName);
 
     [DllImport("user32.dll", SetLastError = true)]
-    public static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string? lpszClass, string? lpszWindow);
+    public static extern IntPtr FindWindowEx(
+        IntPtr hwndParent,
+        IntPtr hwndChildAfter,
+        string? lpszClass,
+        string? lpszWindow
+    );
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll")]
-    public static extern bool EnumChildWindows(IntPtr hwndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
+    public static extern bool EnumChildWindows(
+        IntPtr hwndParent,
+        EnumChildProc lpEnumFunc,
+        IntPtr lParam
+    );
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    public static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
+    public static extern int GetWindowText(
+        IntPtr hWnd,
+        System.Text.StringBuilder lpString,
+        int nMaxCount
+    );
 
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-    public static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+    public static extern int GetClassName(
+        IntPtr hWnd,
+        System.Text.StringBuilder lpClassName,
+        int nMaxCount
+    );
 
     public delegate bool EnumChildProc(IntPtr hwnd, IntPtr lParam);
 
@@ -40,6 +57,7 @@ public static class WindowUtils
         }
         return IntPtr.Zero;
     }
+
     public static bool CloseWindow(IntPtr windowHandle)
     {
         if (windowHandle != IntPtr.Zero)

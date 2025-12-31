@@ -9,14 +9,12 @@ public record GamePreferences(
     string[] ComputerRaces = null!,
     string[] PlayerSlots = null!,
     string AutoMenu = "SINGLE_PLAYER"
-)
-{
-}
+) { }
 
 public enum Race
 {
     Terran,
     Protoss,
     Zerg,
-    Random
+    Random,
 }

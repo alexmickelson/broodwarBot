@@ -4,7 +4,8 @@ public static class BwapiConfigService
 {
     private static readonly string _starcraftBasePath = Path.Combine(
         Directory.GetCurrentDirectory(),
-        "..", "Starcraft"
+        "..",
+        "Starcraft"
     );
 
     public static void ConfigureBwapiIni(GamePreferences gamePreferences)
@@ -12,16 +13,25 @@ public static class BwapiConfigService
         var bwapiIniPath = Path.Combine(_starcraftBasePath, "bwapi-data", "bwapi.ini");
         Console.WriteLine($"Configuring BWAPI settings at: {bwapiIniPath}");
 
-        var enemyRace = gamePreferences.ComputerRaces.Length > 0 ? gamePreferences.ComputerRaces[0] : "Terran";
-        var enemyRace1 = gamePreferences.ComputerRaces.Length > 0 ? gamePreferences.ComputerRaces[0] : "Default";
-        var enemyRace2 = gamePreferences.ComputerRaces.Length > 1 ? gamePreferences.ComputerRaces[1] : "Default";
-        var enemyRace3 = gamePreferences.ComputerRaces.Length > 2 ? gamePreferences.ComputerRaces[2] : "Default";
-        var enemyRace4 = gamePreferences.ComputerRaces.Length > 3 ? gamePreferences.ComputerRaces[3] : "Default";
-        var enemyRace5 = gamePreferences.ComputerRaces.Length > 4 ? gamePreferences.ComputerRaces[4] : "Default";
-        var enemyRace6 = gamePreferences.ComputerRaces.Length > 5 ? gamePreferences.ComputerRaces[5] : "Default";
-        var enemyRace7 = gamePreferences.ComputerRaces.Length > 6 ? gamePreferences.ComputerRaces[6] : "Default";
+        var enemyRace =
+            gamePreferences.ComputerRaces.Length > 0 ? gamePreferences.ComputerRaces[0] : "Terran";
+        var enemyRace1 =
+            gamePreferences.ComputerRaces.Length > 0 ? gamePreferences.ComputerRaces[0] : "Default";
+        var enemyRace2 =
+            gamePreferences.ComputerRaces.Length > 1 ? gamePreferences.ComputerRaces[1] : "Default";
+        var enemyRace3 =
+            gamePreferences.ComputerRaces.Length > 2 ? gamePreferences.ComputerRaces[2] : "Default";
+        var enemyRace4 =
+            gamePreferences.ComputerRaces.Length > 3 ? gamePreferences.ComputerRaces[3] : "Default";
+        var enemyRace5 =
+            gamePreferences.ComputerRaces.Length > 4 ? gamePreferences.ComputerRaces[4] : "Default";
+        var enemyRace6 =
+            gamePreferences.ComputerRaces.Length > 5 ? gamePreferences.ComputerRaces[5] : "Default";
+        var enemyRace7 =
+            gamePreferences.ComputerRaces.Length > 6 ? gamePreferences.ComputerRaces[6] : "Default";
 
-        var configContent = $@"[ai]
+        var configContent =
+            $@"[ai]
 ; Paths and revisions for AI
 ;   - Use commas to specify AI for multiple instances.
 ;   - If there are more instances than the amount of 

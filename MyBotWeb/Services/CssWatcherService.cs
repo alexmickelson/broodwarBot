@@ -32,8 +32,8 @@ public class CssWatcherService : IHostedService
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                WorkingDirectory = _environment.ContentRootPath
-            }
+                WorkingDirectory = _environment.ContentRootPath,
+            },
         };
 
         _process.OutputDataReceived += (sender, args) =>
@@ -49,8 +49,10 @@ public class CssWatcherService : IHostedService
             if (!string.IsNullOrEmpty(args.Data))
             {
                 // Tailwind outputs build info to stderr, only log actual errors
-                if (args.Data.Contains("error", StringComparison.OrdinalIgnoreCase) ||
-                    args.Data.Contains("fail", StringComparison.OrdinalIgnoreCase))
+                if (
+                    args.Data.Contains("error", StringComparison.OrdinalIgnoreCase)
+                    || args.Data.Contains("fail", StringComparison.OrdinalIgnoreCase)
+                )
                 {
                     _logger.LogWarning("CSS Watcher Error: {Error}", args.Data);
                 }

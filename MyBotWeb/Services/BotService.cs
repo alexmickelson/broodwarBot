@@ -13,7 +13,6 @@ public class BotService : DefaultBWListener
     public event Action? GameStartedOrEnded;
     public event Action? GameEnded;
 
-
     public void StartBot()
     {
         _bwClient = new BWClient(this);
@@ -61,7 +60,8 @@ public class BotService : DefaultBWListener
 
     public override void OnFrame()
     {
-        if (Game == null) return;
+        if (Game == null)
+            return;
         if (GameSpeedToSet != null)
         {
             Game.SetLocalSpeed(GameSpeedToSet.Value);

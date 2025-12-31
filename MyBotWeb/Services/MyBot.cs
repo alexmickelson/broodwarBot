@@ -1,4 +1,5 @@
-﻿using BWAPI.NET;
+﻿using System.Collections.Immutable;
+using BWAPI.NET;
 
 namespace MyBotWeb.Services;
 
@@ -20,7 +21,10 @@ public class MyBot
 {
     private Game? _game;
     public Dictionary<int, (UnitAssignment Assignment, int? TargetId)> WorkerAssignments = new();
-    public Dictionary<int, UnitAssignmentDetail> UnitAssignments = new();
+    public ImmutableDictionary<int, UnitAssignmentDetail> UnitAssignments = ImmutableDictionary<
+        int,
+        UnitAssignmentDetail
+    >.Empty;
     public BotBuildOrder BuildOrder;
     public Position MilitaryPoint { get; set; } = Position.None;
     public Position MoveMinimapPoint { get; set; } = Position.None;
@@ -43,7 +47,7 @@ public class MyBot
             return;
         BuildOrder.OnFrame(_game);
         AssignWorkers(_game);
-        AssignUnits(_game);
+        UnitAssignments = MilitaryUnitUtils.AssignUnits(_game, UnitAssignments, MilitaryPoint);
         if (MoveMinimapPoint != Position.None)
         {
             // Center the screen on the target position (screen is 640x480, so center is at offset -320, -240)
@@ -109,114 +113,6 @@ public class MyBot
         }
     }
 
-    private void AssignUnits(Game game)
-    {
-        var nonWorkerUnits = game.GetAllUnits()
-            .Where(u => u.GetPlayer() == game.Self() && !u.GetUnitType().IsWorker())
-            .ToList();
-        RemoveDeadUnitsFromAssignments(nonWorkerUnits);
-
-        foreach (var unit in nonWorkerUnits)
-        {
-            UnitAssignments[unit.GetID()] = new UnitAssignmentDetail(
-                Assignment: UnitAssignment.Attacking,
-                TargetId: null,
-                TargetPosition: MilitaryPoint
-            );
-        }
-
-        foreach (var unit in nonWorkerUnits)
-        {
-            var assignmentDetail = UnitAssignments[unit.GetID()];
-            switch (assignmentDetail.Assignment)
-            {
-                case UnitAssignment.Attacking:
-                    if (assignmentDetail.TargetPosition == null)
-                        break;
-                    var targetPosition = (Position)assignmentDetail.TargetPosition;
-
-                    if (unit.GetPosition().GetDistance(targetPosition) < 64)
-                    {
-                        // Stand and attack nearby enemies
-                        if (!unit.IsIdle())
-                        {
-                            break;
-                        }
-                        var nearbyEnemies = game.GetAllUnits()
-                            .Where(e =>
-                                e.GetPlayer() != game.Self()
-                                && !e.GetPlayer().IsNeutral()
-                                && e.GetPosition().GetDistance(unit.GetPosition())
-                                    < unit.GetUnitType().SightRange()
-                            )
-                            .OrderBy(e => e.GetUnitType().IsBuilding())
-                            .ThenBy(e => e.GetPosition().GetDistance(unit.GetPosition()))
-                            .FirstOrDefault();
-
-                        if (nearbyEnemies != null)
-                        {
-                            unit.Attack(nearbyEnemies);
-                        }
-                    }
-                    else
-                    {
-                        // Check if unit is under attack - defend yourself!
-                        var attackingEnemies = game.GetAllUnits()
-                            .Where(e =>
-                                e.GetPlayer() != game.Self()
-                                && !e.GetPlayer().IsNeutral()
-                                && e.GetPosition().GetDistance(unit.GetPosition())
-                                    < unit.GetUnitType().SightRange()
-                            )
-                            .OrderBy(e => e.GetUnitType().IsBuilding())
-                            .ThenBy(e => e.GetPosition().GetDistance(unit.GetPosition()))
-                            .ThenBy(e => e.GetHitPoints())
-                            .FirstOrDefault();
-
-                        var inRangeEnemies = game.GetAllUnits()
-                            .Where(e =>
-                                e.GetPlayer() != game.Self()
-                                && !e.GetPlayer().IsNeutral()
-                                && e.GetPosition().GetDistance(unit.GetPosition())
-                                    < (unit.GetUnitType().GroundWeapon().MaxRange() + 10)
-                            )
-                            .OrderBy(e => e.GetUnitType().IsBuilding())
-                            .ThenBy(e => e.GetPosition().GetDistance(unit.GetPosition()))
-                            .ThenBy(e => e.GetHitPoints())
-                            .FirstOrDefault();
-
-                        if (attackingEnemies != null)
-                        {
-                            if (unit.GetOrderTarget() != attackingEnemies)
-                            {
-                                unit.Attack(attackingEnemies);
-                            }
-                        }
-                        if (inRangeEnemies != null)
-                        {
-                            if (unit.GetOrderTarget() != inRangeEnemies)
-                            {
-                                unit.Attack(inRangeEnemies);
-                            }
-                        }
-                        else if (
-                            unit.IsIdle()
-                            || (
-                                unit.GetOrderTarget() == null
-                                && unit.GetTargetPosition() != targetPosition
-                            )
-                        )
-                        {
-                            unit.Attack(targetPosition);
-                        }
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
-
     private void RemoveDeadWorkersFromAssignments(List<Unit> workers)
     {
         var validWorkerIds = workers.Select(w => w.GetID()).ToHashSet();
@@ -226,16 +122,6 @@ public class MyBot
         foreach (var deadId in deadWorkerIds)
         {
             WorkerAssignments.Remove(deadId);
-        }
-    }
-
-    private void RemoveDeadUnitsFromAssignments(List<Unit> units)
-    {
-        var validUnitIds = units.Select(u => u.GetID()).ToHashSet();
-        var deadUnitIds = UnitAssignments.Keys.Where(id => !validUnitIds.Contains(id)).ToList();
-        foreach (var deadId in deadUnitIds)
-        {
-            UnitAssignments.Remove(deadId);
         }
     }
 

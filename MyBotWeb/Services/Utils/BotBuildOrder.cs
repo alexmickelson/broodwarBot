@@ -76,27 +76,11 @@ public class BotBuildOrder
             );
         }
 
-        if (_pendingBuilding != null)
+        if (CheckPendingBuilding(game))
         {
-            var buildingCountOfPendingType = game.GetAllUnits()
-                .Count(u => u.GetPlayer() == game.Self() && u.GetUnitType() == _pendingBuilding);
-
-            if (buildingCountOfPendingType < _pendingBuildingTotalCount)
-            {
-                game.DrawTextScreen(
-                    5,
-                    5,
-                    $"Waiting for construction of {_pendingBuilding} to start..."
-                );
-                return;
-            }
-            else
-            {
-                _pendingBuilding = null;
-                _pendingBuildingTotalCount = null;
-                BuildQueue.RemoveAt(0);
-            }
+            return;
         }
+
         if (!BuildQueue.Any())
         {
             AddSomethingToBuildQueue(game);
@@ -128,6 +112,33 @@ public class BotBuildOrder
         }
 
         buildCommand();
+    }
+
+    private bool CheckPendingBuilding(Game game)
+    {
+        if (_pendingBuilding != null)
+        {
+            var buildingCountOfPendingType = game.GetAllUnits()
+                .Count(u => u.GetPlayer() == game.Self() && u.GetUnitType() == _pendingBuilding);
+
+            if (buildingCountOfPendingType < _pendingBuildingTotalCount)
+            {
+                game.DrawTextScreen(
+                    5,
+                    5,
+                    $"Waiting for construction of {_pendingBuilding} to start..."
+                );
+                return true;
+            }
+            else
+            {
+                _pendingBuilding = null;
+                _pendingBuildingTotalCount = null;
+                BuildQueue.RemoveAt(0);
+            }
+        }
+
+        return false;
     }
 
     private void AddSomethingToBuildQueue(Game game)

@@ -4,23 +4,34 @@ namespace MyBotWeb.Services;
 
 public static class BuildingLocationUtils
 {
-    public static List<TilePosition> MarkAndGetPossibleBuildLocations(Game game, UnitType buildingType, TilePosition nearPosition)
+    public static List<TilePosition> MarkAndGetPossibleBuildLocations(
+        Game game,
+        UnitType buildingType,
+        TilePosition nearPosition
+    )
     {
         var possibleLocations = new List<TilePosition>();
 
         // Get nexus and resource locations
-        var nexus = game.GetAllUnits().FirstOrDefault(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsResourceDepot());
-        if (nexus == null) return possibleLocations;
+        var nexus = game.GetAllUnits()
+            .FirstOrDefault(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsResourceDepot());
+        if (nexus == null)
+            return possibleLocations;
 
         var resources = game.GetMinerals().Concat(game.GetGeysers()).ToList();
-        var existingBuildings = game.GetAllUnits().Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsBuilding()).ToList();
+        var existingBuildings = game.GetAllUnits()
+            .Where(u => u.GetPlayer() == game.Self() && u.GetUnitType().IsBuilding())
+            .ToList();
 
         int maxSearchRadius = 20; // Limit the search radius for performance
         for (int dx = -maxSearchRadius; dx <= maxSearchRadius; dx++)
         {
             for (int dy = -maxSearchRadius; dy <= maxSearchRadius; dy++)
             {
-                TilePosition testPosition = new TilePosition(nearPosition.X + dx, nearPosition.Y + dy);
+                TilePosition testPosition = new TilePosition(
+                    nearPosition.X + dx,
+                    nearPosition.Y + dy
+                );
                 TestAndMarkLocation(
                     game: game,
                     buildingType: buildingType,
@@ -28,15 +39,25 @@ public static class BuildingLocationUtils
                     nexus: nexus,
                     resources: resources,
                     existingBuildings: existingBuildings,
-                    possibleLocations: possibleLocations);
+                    possibleLocations: possibleLocations
+                );
             }
         }
         return possibleLocations;
     }
 
-    private static void TestAndMarkLocation(Game game, UnitType buildingType, TilePosition testPosition, Unit nexus, List<Unit> resources, List<Unit> existingBuildings, List<TilePosition> possibleLocations)
+    private static void TestAndMarkLocation(
+        Game game,
+        UnitType buildingType,
+        TilePosition testPosition,
+        Unit nexus,
+        List<Unit> resources,
+        List<Unit> existingBuildings,
+        List<TilePosition> possibleLocations
+    )
     {
-        var isGoodLocation = game.CanBuildHere(testPosition, buildingType, builder: null, checkExplored: true)
+        var isGoodLocation =
+            game.CanBuildHere(testPosition, buildingType, builder: null, checkExplored: true)
             && !IsPositionBetweenNexusAndResources(testPosition, nexus, buildingType, resources)
             && IsAwayFromBuildingsAndWalls(game, testPosition, buildingType, existingBuildings);
 
@@ -54,21 +75,28 @@ public static class BuildingLocationUtils
         }
     }
 
-    private static bool IsAwayFromBuildingsAndWalls(Game game, TilePosition buildPos, UnitType buildingType, List<Unit> existingBuildings)
+    private static bool IsAwayFromBuildingsAndWalls(
+        Game game,
+        TilePosition buildPos,
+        UnitType buildingType,
+        List<Unit> existingBuildings
+    )
     {
-        if(buildingType == UnitType.Protoss_Assimilator)
+        if (buildingType == UnitType.Protoss_Assimilator)
         {
             return true;
         }
 
-        var existingPylonCount = existingBuildings.Count(b => b.GetUnitType() == UnitType.Protoss_Pylon);
+        var existingPylonCount = existingBuildings.Count(b =>
+            b.GetUnitType() == UnitType.Protoss_Pylon
+        );
         int minBuildingDistance = buildingType switch
         {
-            UnitType.Protoss_Pylon => existingPylonCount < 4 ?  5 * 32 : 2 * 32,
+            UnitType.Protoss_Pylon => existingPylonCount < 4 ? 5 * 32 : 2 * 32,
             _ => 1 * 32,
         };
         Position buildPixelPos = new Position(buildPos.X * 32, buildPos.Y * 32);
-        
+
         // Check distance from other buildings
         foreach (var building in existingBuildings)
         {
@@ -77,7 +105,7 @@ public static class BuildingLocationUtils
                 return false;
             }
         }
-        
+
         // Check distance from walls
         int bufferTiles = buildingType switch
         {
@@ -91,18 +119,23 @@ public static class BuildingLocationUtils
             for (int dy = -bufferTiles; dy < tileHeight + bufferTiles; dy++)
             {
                 TilePosition checkPos = new TilePosition(buildPos.X + dx, buildPos.Y + dy);
-                
+
                 if (!game.IsBuildable(checkPos))
                 {
                     return false;
                 }
             }
         }
-        
+
         return true;
     }
 
-    private static bool IsPositionBetweenNexusAndResources(TilePosition buildPos, Unit nexus, UnitType buildingType, List<Unit> resources)
+    private static bool IsPositionBetweenNexusAndResources(
+        TilePosition buildPos,
+        Unit nexus,
+        UnitType buildingType,
+        List<Unit> resources
+    )
     {
         if (buildingType == UnitType.Protoss_Assimilator)
         {
@@ -116,9 +149,17 @@ public static class BuildingLocationUtils
             Position resourcePos = resource.GetPosition();
 
             // Calculate distances
-            double nexusToResource = Math.Sqrt(Math.Pow(resourcePos.X - nexusPos.X, 2) + Math.Pow(resourcePos.Y - nexusPos.Y, 2));
-            double nexusToBuild = Math.Sqrt(Math.Pow(buildPixelPos.X - nexusPos.X, 2) + Math.Pow(buildPixelPos.Y - nexusPos.Y, 2));
-            double buildToResource = Math.Sqrt(Math.Pow(resourcePos.X - buildPixelPos.X, 2) + Math.Pow(resourcePos.Y - buildPixelPos.Y, 2));
+            double nexusToResource = Math.Sqrt(
+                Math.Pow(resourcePos.X - nexusPos.X, 2) + Math.Pow(resourcePos.Y - nexusPos.Y, 2)
+            );
+            double nexusToBuild = Math.Sqrt(
+                Math.Pow(buildPixelPos.X - nexusPos.X, 2)
+                    + Math.Pow(buildPixelPos.Y - nexusPos.Y, 2)
+            );
+            double buildToResource = Math.Sqrt(
+                Math.Pow(resourcePos.X - buildPixelPos.X, 2)
+                    + Math.Pow(resourcePos.Y - buildPixelPos.Y, 2)
+            );
 
             // If the build position is roughly on the line between nexus and resource (with some tolerance)
             // then nexusToBuild + buildToResource ≈ nexusToResource

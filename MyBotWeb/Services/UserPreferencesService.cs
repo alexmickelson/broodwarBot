@@ -25,10 +25,7 @@ public class UserPreferencesService
 
     public void SavePreferences(GamePreferences preferences)
     {
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true
-        };
+        var options = new JsonSerializerOptions { WriteIndented = true };
         var json = JsonSerializer.Serialize(preferences, options);
         File.WriteAllText(_preferencesFilePath, json);
         Console.WriteLine($"Saved preferences to {_preferencesFilePath}");
